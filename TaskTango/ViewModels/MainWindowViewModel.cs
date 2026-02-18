@@ -8,6 +8,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NotepadApp.Models;
 using NotepadApp.Services;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
 
 namespace NotepadApp.ViewModels;
 
@@ -44,6 +46,20 @@ public partial class MainWindowViewModel : ViewModelBase
         
         Notepads = new ObservableCollection<NotepadData>(_settings.Notepads);
         FilteredTasks = new ObservableCollection<TaskItem>();
+        
+        // Initialize RichTextContent for existing notepads if needed
+        foreach (var notepad in Notepads)
+        {
+            if (notepad.Content == null)
+            {
+                var encoder = HtmlEncoder.Create(UnicodeRanges.All);
+                notepad.Content = new RichTextContent 
+                { 
+                    PlainText = notepad.FreeformNotes,
+                    HtmlContent = $"<p>{encoder.Encode(notepad.FreeformNotes)}</p>"
+                };
+            }
+        }
         
         // Set initial current notepad and update IsCurrent flags
         CurrentNotepad = Notepads[_settings.SelectedIndex];
@@ -158,7 +174,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var newNotepad = new NotepadData 
         { 
-            Title = $"New Notepad {Notepads.Count + 1}" 
+            Title = $"New Notepad {Notepads.Count + 1}",
+            Content = new RichTextContent()
         };
         Notepads.Add(newNotepad);
         CurrentNotepad = newNotepad;

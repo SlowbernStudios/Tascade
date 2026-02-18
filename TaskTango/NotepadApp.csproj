@@ -23,5 +23,8 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
+    <PackageReference Include="AvaloniaEdit" Version="0.10.12" />
+    <PackageReference Include="System.Text.Encodings.Web" Version="9.0.0" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,119 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="using:NotepadApp.Models"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="400"
+             x:Class="NotepadApp.Controls.RichTextEditor"
+             x:DataType="models:RichTextContent">
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- Formatting Toolbar -->
+    <Border Grid.Row="0" Background="{StaticResource TangoDarkButtonBrush}" 
+            BorderBrush="{StaticResource TangoDarkBorderBrush}" 
+            BorderThickness="0,0,0,1" 
+            Padding="6,4">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- First Row: Headings and Basic Formatting -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="4">
+          
+          <!-- Headings Group -->
+          <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                  BorderThickness="1" 
+                  CornerRadius="2" 
+                  Padding="2">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+              <TextBlock Text="Style" VerticalAlignment="Center" Margin="4,0,2,0" 
+                        FontSize="10" Foreground="{StaticResource TangoDarkFgBrush}"/>
+              <Separator Width="1" Margin="0,2"/>
+              <ComboBox Width="80" Name="HeadingComboBox" SelectedIndex="6" FontSize="11">
+                <ComboBoxItem Content="Title"/>
+                <ComboBoxItem Content="Subtitle"/>
+                <ComboBoxItem Content="Heading"/>
+                <ComboBoxItem Content="Subheading"/>
+                <ComboBoxItem Content="Section"/>
+                <ComboBoxItem Content="Subsection"/>
+                <ComboBoxItem Content="Body"/>
+              </ComboBox>
+            </StackPanel>
+          </Border>
+          
+          <Separator Width="8"/>
+          
+          <!-- Text Formatting Group -->
+          <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                  BorderThickness="1" 
+                  CornerRadius="2" 
+                  Padding="2">
+            <StackPanel Orientation="Horizontal" Spacing="1">
+              <Button Name="BoldButton" Content="B" FontWeight="Bold" Width="22" Height="22" 
+                      FontSize="12" Padding="0" Margin="1"/>
+              <Button Name="ItalicButton" Content="I" FontStyle="Italic" Width="22" Height="22" 
+                      FontSize="12" Padding="0" Margin="1"/>
+              <Button Name="UnderlineButton" Content="U" Width="22" Height="22" 
+                      FontSize="12" Padding="0" Margin="1"/>
+            </StackPanel>
+          </Border>
+          
+          <Separator Width="8"/>
+          
+          <!-- Lists Group -->
+          <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                  BorderThickness="1" 
+                  CornerRadius="2" 
+                  Padding="2">
+            <StackPanel Orientation="Horizontal" Spacing="1">
+              <Button Name="BulletListButton" Content="•" Width="22" Height="22" 
+                      FontSize="14" Padding="0" Margin="1"/>
+              <Button Name="NumberListButton" Content="1." Width="22" Height="22" 
+                      FontSize="10" Padding="0" Margin="1"/>
+            </StackPanel>
+          </Border>
+          
+          <Separator Width="8"/>
+          
+          <!-- Insert Group -->
+          <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                  BorderThickness="1" 
+                  CornerRadius="2" 
+                  Padding="2">
+            <StackPanel Orientation="Horizontal" Spacing="1">
+              <Button Name="LinkButton" Content="🔗" Width="22" Height="22" 
+                      FontSize="10" Padding="0" Margin="1"/>
+              <Button Name="TableButton" Content="⊞" Width="22" Height="22" 
+                      FontSize="10" Padding="0" Margin="1"/>
+            </StackPanel>
+          </Border>
+          
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Text Editor -->
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" 
+                  VerticalScrollBarVisibility="Auto">
+      <TextBox Name="ContentTextBox" 
+               Text="{Binding HtmlContent, Mode=TwoWay}"
+               TextWrapping="Wrap" 
+               AcceptsReturn="True"
+               Background="{StaticResource TangoDarkBgBrush}"
+               Foreground="{StaticResource TangoDarkFgBrush}"
+               BorderThickness="0"
+               Padding="8"
+               FontFamily="Consolas, Courier New, monospace"
+               FontSize="12"/>
+    </ScrollViewer>
+
+  </Grid>
+
+</UserControl>

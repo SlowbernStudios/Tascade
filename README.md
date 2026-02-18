@@ -2,7 +2,7 @@
 
 A modern, cross-platform notepad application that combines the simplicity of Windows Notepad with powerful task management capabilities, featuring a terminal-inspired Tango Dark theme and vim-inspired editing features.
 
-## 🚀 Features
+## Features
 
 ### Core Functionality
 
@@ -30,7 +30,7 @@ A modern, cross-platform notepad application that combines the simplicity of Win
 - **:q** - Quit (vim command mode)
 - **:wq** - Save and quit (vim command mode)
 
-## 📦 Installation
+## Installation
 
 ### Download Pre-built Binary
 
@@ -66,7 +66,7 @@ dotnet publish -c Release -r osx-x64 --self-contained
 dotnet publish -c Release -r linux-x64 --self-contained
 ```
 
-## 🛠️ Development
+## Development
 
 ### Prerequisites
 
@@ -76,7 +76,7 @@ dotnet publish -c Release -r linux-x64 --self-contained
 ### Project Structure
 
 ```txt
-NotepadApp/
+TaskTango/
 ├── Models/                 # Data models
 │   ├── TaskItem.cs
 │   ├── NotepadData.cs
@@ -99,7 +99,7 @@ NotepadApp/
 dotnet test
 ```
 
-## 📋 Usage
+## Usage
 
 ### Basic Usage
 
@@ -107,7 +107,7 @@ dotnet test
 2. **Add tasks** - Enter task text and click "Add" or press Enter
 3. **Manage tasks** - Check off completed tasks, edit inline, or delete
 4. **Search tasks** - Use the search box to filter tasks
-5. **Switch pages** - Use the dropdown to switch between notepad pages
+5. **Switch pages** - Click the tabs to switch between notepad pages
 
 ### Vim Mode (Optional)
 
@@ -124,7 +124,7 @@ Enable vim-inspired editing for power users:
 - **Format**: JSON (human-readable)
 - **Backup**: Simply copy the settings file to backup your data
 
-## 🎨 Customization
+## Customization
 
 ### Theme
 
@@ -146,7 +146,7 @@ case "yourcommand":
     break;
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -161,23 +161,23 @@ case "yourcommand":
 - Test new features thoroughly
 - Update documentation as needed
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [Avalonia UI](https://avaloniaui.net/) - Cross-platform UI framework
 - [CommunityToolkit.Mvvm](https://learn.microsoft.com/en-us/dotnet/communitytoolkit/mvvm/) - MVVM framework
 - [Tango Desktop Project](https://tango.freedesktop.org/) - Color scheme inspiration
 
-## 📞 Support
+## Support
 
 - **Issues**: [GitHub Issues](https://github.com/yourusername/TaskTango/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/yourusername/TaskTango/discussions)
-- **Email**: <your.email@example.com>
+- **Email**: your.email@example.com
 
-## 🔄 Changelog
+## Changelog
 
 ### v1.0.0 (2025-02-18)
 
@@ -186,3 +186,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Tango Dark theme
 - Vim-inspired editing
 - Cross-platform support
+
+---
+
+Made with love for developers who love terminal aesthetics

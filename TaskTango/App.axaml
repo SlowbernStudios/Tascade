@@ -135,7 +135,7 @@
         </Style>
         
         <Style Selector="Border.task-item:pointerover">
-            <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
+            <Setter Property="Background" Value="{StaticResource TangoDarkAccentBrush}"/>
         </Style>
         
         <!-- Toolbar styling - Notepad-inspired -->
