@@ -1,0 +1,134 @@
+# Visual Studio / .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.json
+*.runtimeconfig.dev.json
+
+# Rider
+.idea/
+*.sln.iml
+
+# Code results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+*.vspx
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Rr]elease/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]eleases/
+[Rr]earch/
+[Bb]uild/
+[Bb]uildLog/
+*_Backup/
+*_Backup.[Rr]estore/
+*.log
+
+# Visual Studio cache files
+*.ilk
+*.meta
+*.pch
+*.pdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Keep the following files
+!*.axaml
+!*.cs
+!*.csproj
+!*.sln
+!README.md
+!LICENSE
+!.gitignore
+
+# Avalonia specific
+*.axaml.cs
+*.axaml.resharper
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# User-specific files
+*.user
+*.userosscache
+*.sln.docstates
+
+# Mono auto generated files
+mono_crash.*
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Mac
+.DS_Store
+
+# IDE
+.vs/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+publish/
+*.nupkg
+*.snupkg
+
+# Logs
+logs/
+*.log

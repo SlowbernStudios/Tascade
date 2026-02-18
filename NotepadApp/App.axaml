@@ -1,0 +1,128 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="NotepadApp.App"
+             xmlns:local="using:NotepadApp"
+             xmlns:converters="using:NotepadApp.Converters"
+             RequestedThemeVariant="Dark">
+             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+  
+    <Application.Resources>
+        <converters:BoolToStrikethroughConverter x:Key="BoolToStrikethroughConverter"/>
+        
+        <!-- Tango Dark Color Palette -->
+        <Color x:Key="TangoDarkBg">#2E3436</Color>
+        <Color x:Key="TangoDarkFg">#EEEEEC</Color>
+        <Color x:Key="TangoDarkBorder">#555753</Color>
+        <Color x:Key="TangoDarkHighlight">#204A87</Color>
+        <Color x:Key="TangoDarkHighlightText">#FFFFFF</Color>
+        <Color x:Key="TangoDarkButton">#4A4A4A</Color>
+        <Color x:Key="TangoDarkButtonHover">#5A5A5A</Color>
+        <Color x:Key="TangoDarkAccent">#4E9A06</Color>
+        <Color x:Key="TangoDarkAccentHover">#6BA016</Color>
+        <Color x:Key="TangoDarkError">#CC0000</Color>
+        <Color x:Key="TangoDarkSuccess">#4E9A06</Color>
+        <Color x:Key="TangoDarkWarning">#F57900</Color>
+        
+        <!-- Brushes -->
+        <SolidColorBrush x:Key="TangoDarkBgBrush" Color="{StaticResource TangoDarkBg}"/>
+        <SolidColorBrush x:Key="TangoDarkFgBrush" Color="{StaticResource TangoDarkFg}"/>
+        <SolidColorBrush x:Key="TangoDarkBorderBrush" Color="{StaticResource TangoDarkBorder}"/>
+        <SolidColorBrush x:Key="TangoDarkHighlightBrush" Color="{StaticResource TangoDarkHighlight}"/>
+        <SolidColorBrush x:Key="TangoDarkHighlightTextBrush" Color="{StaticResource TangoDarkHighlightText}"/>
+        <SolidColorBrush x:Key="TangoDarkButtonBrush" Color="{StaticResource TangoDarkButton}"/>
+        <SolidColorBrush x:Key="TangoDarkButtonHoverBrush" Color="{StaticResource TangoDarkButtonHover}"/>
+        <SolidColorBrush x:Key="TangoDarkAccentBrush" Color="{StaticResource TangoDarkAccent}"/>
+        <SolidColorBrush x:Key="TangoDarkAccentHoverBrush" Color="{StaticResource TangoDarkAccentHover}"/>
+        <SolidColorBrush x:Key="TangoDarkErrorBrush" Color="{StaticResource TangoDarkError}"/>
+        <SolidColorBrush x:Key="TangoDarkSuccessBrush" Color="{StaticResource TangoDarkSuccess}"/>
+        <SolidColorBrush x:Key="TangoDarkWarningBrush" Color="{StaticResource TangoDarkWarning}"/>
+    </Application.Resources>
+  
+    <Application.Styles>
+        <FluentTheme />
+        
+        <!-- Custom Tango Dark Styles -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+        </Style>
+        
+        <Style Selector="Border">
+            <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+        </Style>
+        
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="SelectionBrush" Value="{StaticResource TangoDarkHighlightBrush}"/>
+        </Style>
+        
+        <Style Selector="Button">
+            <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+        </Style>
+        
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="{StaticResource TangoDarkButtonHoverBrush}"/>
+        </Style>
+        
+        <Style Selector="Button:pressed">
+            <Setter Property="Background" Value="{StaticResource TangoDarkAccentBrush}"/>
+        </Style>
+        
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+        </Style>
+        
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+        </Style>
+        
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+        </Style>
+        
+        <Style Selector="GridSplitter">
+            <Setter Property="Background" Value="{StaticResource TangoDarkBorderBrush}"/>
+        </Style>
+        
+        <Style Selector="ScrollViewer">
+            <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
+        </Style>
+        
+        <Style Selector="ItemsControl">
+            <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
+        </Style>
+        
+        <Style Selector="Separator">
+            <Setter Property="Background" Value="{StaticResource TangoDarkBorderBrush}"/>
+        </Style>
+        
+        <!-- Task item specific styling -->
+        <Style Selector="Border.task-item">
+            <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        
+        <Style Selector="Border.task-item:pointerover">
+            <Setter Property="Background" Value="{StaticResource TangoDarkButtonHoverBrush}"/>
+        </Style>
+        
+        <!-- Toolbar styling -->
+        <Style Selector="Border.toolbar">
+            <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+    </Application.Styles>
+</Application>
