@@ -45,7 +45,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Notepads = new ObservableCollection<NotepadData>(_settings.Notepads);
         FilteredTasks = new ObservableCollection<TaskItem>();
         
+        // Set initial current notepad and update IsCurrent flags
         CurrentNotepad = Notepads[_settings.SelectedIndex];
+        UpdateCurrentTab();
         ShowCompleted = _settings.ShowCompletedTasks;
         TasksWidth = _settings.TasksWidth;
         AutoSave = _settings.AutoSave;
@@ -55,6 +57,7 @@ public partial class MainWindowViewModel : ViewModelBase
     
     partial void OnCurrentNotepadChanged(NotepadData value)
     {
+        UpdateCurrentTab();
         UpdateFilteredTasks();
     }
     
@@ -84,6 +87,15 @@ public partial class MainWindowViewModel : ViewModelBase
         foreach (var task in filtered)
         {
             FilteredTasks.Add(task);
+        }
+    }
+    
+    private void UpdateCurrentTab()
+    {
+        // Update IsCurrent flags for all notepads
+        foreach (var notepad in Notepads)
+        {
+            notepad.IsCurrent = (notepad == CurrentNotepad);
         }
     }
     
@@ -151,6 +163,33 @@ public partial class MainWindowViewModel : ViewModelBase
         Notepads.Add(newNotepad);
         CurrentNotepad = newNotepad;
         MarkDirty();
+    }
+    
+    [RelayCommand]
+    private void CloseNotepad(NotepadData notepad)
+    {
+        if (Notepads.Count <= 1) return; // Don't allow closing the last tab
+        
+        var index = Notepads.IndexOf(notepad);
+        Notepads.Remove(notepad);
+        
+        // If we closed the current tab, switch to another
+        if (CurrentNotepad == notepad)
+        {
+            // Try to select the tab at the same position, or the previous one
+            if (index < Notepads.Count)
+                CurrentNotepad = Notepads[index];
+            else
+                CurrentNotepad = Notepads[Math.Max(0, index - 1)];
+        }
+        
+        MarkDirty();
+    }
+    
+    [RelayCommand]
+    private void SelectTab(NotepadData notepad)
+    {
+        CurrentNotepad = notepad;
     }
     
     [RelayCommand]

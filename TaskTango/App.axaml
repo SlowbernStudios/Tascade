@@ -12,6 +12,7 @@
   
     <Application.Resources>
         <converters:BoolToStrikethroughConverter x:Key="BoolToStrikethroughConverter"/>
+        <converters:BoolToTabBackgroundConverter x:Key="BoolToTabBackgroundConverter"/>
         
         <!-- Tango Dark Color Palette -->
         <Color x:Key="TangoDarkBg">#2E3436</Color>
@@ -45,28 +46,36 @@
     <Application.Styles>
         <FluentTheme />
         
-        <!-- Custom Tango Dark Styles -->
+        <!-- Custom Tango Dark Styles - Notepad-inspired -->
         <Style Selector="Window">
             <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
         
         <Style Selector="Border">
             <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
         </Style>
         
         <Style Selector="TextBox">
             <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="SelectionBrush" Value="{StaticResource TangoDarkHighlightBrush}"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="FontFamily" Value="Consolas, Courier New, monospace"/>
         </Style>
         
         <Style Selector="Button">
             <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, sans-serif"/>
         </Style>
         
         <Style Selector="Button:pointerover">
@@ -79,50 +88,62 @@
         
         <Style Selector="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, sans-serif"/>
         </Style>
         
         <Style Selector="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, sans-serif"/>
         </Style>
         
         <Style Selector="ComboBox">
             <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TangoDarkFgBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Tahoma, sans-serif"/>
         </Style>
         
         <Style Selector="GridSplitter">
             <Setter Property="Background" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
         
         <Style Selector="ScrollViewer">
             <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
         
         <Style Selector="ItemsControl">
             <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
+            <Setter Property="BorderThickness" Value="0"/>
         </Style>
         
         <Style Selector="Separator">
             <Setter Property="Background" Value="{StaticResource TangoDarkBorderBrush}"/>
+            <Setter Property="Margin" Value="4,0"/>
         </Style>
         
-        <!-- Task item specific styling -->
+        <!-- Task item specific styling - Notepad-inspired -->
         <Style Selector="Border.task-item">
-            <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
+            <Setter Property="Background" Value="{StaticResource TangoDarkBgBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
-            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Padding" Value="4,2"/>
         </Style>
         
         <Style Selector="Border.task-item:pointerover">
-            <Setter Property="Background" Value="{StaticResource TangoDarkButtonHoverBrush}"/>
+            <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
         </Style>
         
-        <!-- Toolbar styling -->
+        <!-- Toolbar styling - Notepad-inspired -->
         <Style Selector="Border.toolbar">
             <Setter Property="Background" Value="{StaticResource TangoDarkButtonBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource TangoDarkBorderBrush}"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
+            <Setter Property="CornerRadius" Value="0"/>
         </Style>
     </Application.Styles>
 </Application>
