@@ -1,0 +1,197 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="using:Tascade.Models"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="400"
+             x:Class="Tascade.Controls.MarkdownEditor"
+             x:DataType="models:RichTextContent">
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <!-- View Mode Selector -->
+    <Border Grid.Row="0" Background="{StaticResource TangoDarkButtonBrush}" 
+            BorderBrush="{StaticResource TangoDarkBorderBrush}" 
+            BorderThickness="0,0,0,1" 
+            Padding="6,4">
+      <StackPanel Orientation="Horizontal" Spacing="4">
+        
+        <!-- View Mode Dropdown -->
+        <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                BorderThickness="1" 
+                CornerRadius="2" 
+                Padding="2">
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <TextBlock Text="View" VerticalAlignment="Center" Margin="4,0,2,0" 
+                      FontSize="10" Foreground="{StaticResource TangoDarkFgBrush}"/>
+            <Separator Width="1" Margin="0,2"/>
+            <ComboBox Width="80" Name="ViewModeComboBox" SelectedIndex="0" FontSize="11">
+              <ComboBoxItem Content="Editor"/>
+              <ComboBoxItem Content="Preview"/>
+              <ComboBoxItem Content="Split"/>
+            </ComboBox>
+          </StackPanel>
+        </Border>
+        
+        <Separator Width="8"/>
+        
+        <!-- Markdown Formatting Group -->
+        <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                BorderThickness="1" 
+                CornerRadius="2" 
+                Padding="2">
+          <StackPanel Orientation="Horizontal" Spacing="1">
+            <Button Name="BoldButton" Content="B" FontWeight="Bold" Width="28" Height="22" Focusable="False"
+                    FontSize="11" Padding="0" Margin="1" ToolTip.Tip="Bold (Ctrl+B)" 
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="ItalicButton" Content="I" FontStyle="Italic" Width="28" Height="22" Focusable="False"
+                    FontSize="11" Padding="0" Margin="1" ToolTip.Tip="Italic (Ctrl+I)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="CodeButton" Content="&lt;/&gt;" Width="28" Height="22" Focusable="False"
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Inline Code (Ctrl+`)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="StrikeButton" Content="S" Width="28" Height="22" Focusable="False"
+                    FontSize="11" Padding="0" Margin="1" ToolTip.Tip="Strikethrough (Alt+S)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+          </StackPanel>
+        </Border>
+        
+        <Separator Width="8"/>
+        
+        <!-- Headings Group -->
+        <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                BorderThickness="1" 
+                CornerRadius="2" 
+                Padding="2">
+          <StackPanel Orientation="Horizontal" Spacing="1">
+            <Button Name="H1Button" Focusable="False" Content="H1" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" FontWeight="Bold" ToolTip.Tip="Heading 1 (Ctrl+1)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="H2Button" Focusable="False" Content="H2" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" FontWeight="Bold" ToolTip.Tip="Heading 2 (Ctrl+2)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="H3Button" Focusable="False" Content="H3" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" FontWeight="Bold" ToolTip.Tip="Heading 3 (Ctrl+3)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+          </StackPanel>
+        </Border>
+        
+        <Separator Width="8"/>
+        
+        <!-- Lists Group -->
+        <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                BorderThickness="1" 
+                CornerRadius="2" 
+                Padding="2">
+          <StackPanel Orientation="Horizontal" Spacing="1">
+            <Button Name="BulletListButton" Focusable="False" Content="•" Width="28" Height="22" 
+                    FontSize="12" Padding="0" Margin="1" ToolTip.Tip="Bullet List (Ctrl+L)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="NumberListButton" Focusable="False" Content="1." Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Numbered List (Ctrl+Shift+L)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="TaskListButton" Focusable="False" Content="☐" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Task List (Ctrl+T)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+          </StackPanel>
+        </Border>
+        
+        <Separator Width="8"/>
+        
+        <!-- Insert Group -->
+        <Border Background="{StaticResource TangoDarkBorderBrush}" 
+                BorderThickness="1" 
+                CornerRadius="2" 
+                Padding="2">
+          <StackPanel Orientation="Horizontal" Spacing="1">
+            <Button Name="LinkButton" Focusable="False" Content="🔗" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Insert Link (Ctrl+K)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="ImageButton" Focusable="False" Content="🖼" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Insert Image (Ctrl+Shift+I)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="TableButton" Focusable="False" Content="⊞" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Insert Table (Ctrl+Shift+T)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="QuoteButton" Focusable="False" Content=">" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Blockquote (Ctrl+Q)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="CodeBlockButton" Focusable="False" Content="{}" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Code Block (Ctrl+Shift+C)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+            <Button Name="HrButton" Focusable="False" Content="—" Width="28" Height="22" 
+                    FontSize="10" Padding="0" Margin="1" ToolTip.Tip="Horizontal Rule (Ctrl+R)"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+          </StackPanel>
+        </Border>
+        
+      </StackPanel>
+    </Border>
+
+    <!-- Splitter (only visible in split mode) -->
+    <GridSplitter Grid.Row="1" Name="Splitter" 
+                  HorizontalAlignment="Stretch" 
+                  Height="4" 
+                  Background="{StaticResource TangoDarkBorderBrush}"
+                  IsVisible="False"/>
+
+    <!-- Main Content Area -->
+    <Grid Grid.Row="2" Name="MainGrid">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- Markdown Editor -->
+      <Border Grid.Column="0" Name="EditorBorder" 
+              Background="{StaticResource TangoDarkBgBrush}"
+              BorderBrush="{StaticResource TangoDarkBorderBrush}"
+              BorderThickness="1"
+              Margin="0,0,2,0">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" 
+                      VerticalScrollBarVisibility="Auto">
+          <TextBox Name="MarkdownTextBox" 
+                   Text="{Binding MarkdownContent, Mode=TwoWay}"
+                   TextWrapping="NoWrap" 
+                   AcceptsReturn="True"
+                   Background="Transparent"
+                   Foreground="{StaticResource TangoDarkFgBrush}"
+                   BorderThickness="0"
+                   Padding="8"
+                   FontFamily="{StaticResource AppMonoFont}"
+                   FontSize="12"/>
+        </ScrollViewer>
+      </Border>
+
+      <!-- HTML Preview -->
+      <Border Grid.Column="1" Name="PreviewBorder" 
+              Background="{StaticResource TangoDarkBgBrush}"
+              BorderBrush="{StaticResource TangoDarkBorderBrush}"
+              BorderThickness="1"
+              Margin="2,0,0,0">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" 
+                      VerticalScrollBarVisibility="Auto">
+          <TextBlock Name="PreviewTextBlock" 
+                     Text="{Binding PreviewText}"
+                     TextWrapping="Wrap"
+                     Background="Transparent"
+                     Foreground="{StaticResource TangoDarkFgBrush}"
+                     Padding="8"
+                     FontFamily="{StaticResource AppMonoFont}"
+                     FontSize="12"/>
+        </ScrollViewer>
+      </Border>
+
+    </Grid>
+
+  </Grid>
+
+</UserControl>
+
+
+

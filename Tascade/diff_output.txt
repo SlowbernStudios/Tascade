@@ -1,0 +1,716 @@
+diff --git a/Tascade/App.axaml b/Tascade/App.axaml
+index 3596eb7..b7a4e21 100644
+--- a/Tascade/App.axaml
++++ b/Tascade/App.axaml
+@@ -13,6 +13,8 @@
+     <Application.Resources>
+         <converters:BoolToStrikethroughConverter x:Key="BoolToStrikethroughConverter"/>
+         <converters:BoolToTabBackgroundConverter x:Key="BoolToTabBackgroundConverter"/>
++        <converters:ViewModeToBoolConverter x:Key="ViewModeToBoolConverter"/>
++        <converters:SuggestionTypeToColorConverter x:Key="SuggestionTypeToColorConverter"/>
+         
+         <!-- Tango Dark Color Palette -->
+         <Color x:Key="TangoDarkBg">#2E3436</Color>
+diff --git a/Tascade/Models/AppSettings.cs b/Tascade/Models/AppSettings.cs
+index f29d232..d660f05 100644
+--- a/Tascade/Models/AppSettings.cs
++++ b/Tascade/Models/AppSettings.cs
+@@ -2,6 +2,27 @@ using System.Collections.Generic;
+ 
+ namespace Tascade.Models
+ {
++    public enum ViewMode
++    {
++        Plain,
++        Markdown,
++        Split
++    }
++
++    public class AutoCompleteSettings
++    {
++        public bool IsEnabled { get; set; } = true;
++        public bool EnableFilePathCompletion { get; set; } = true;
++        public bool EnableCommandCompletion { get; set; } = true;
++        public bool EnableSnippetCompletion { get; set; } = true;
++        public bool EnableWordCompletion { get; set; } = true;
++        public int MaxSuggestions { get; set; } = 10;
++        public int MinWordLength { get; set; } = 2;
++        public List<char> TriggerCharacters { get; set; } = new() { ':', '/', '\\', '.' };
++        public bool ShowDescriptions { get; set; } = true;
++        public bool CaseSensitive { get; set; } = false;
++    }
++
+     public class AppSettings
+     {
+         public List<NotepadData> Notepads { get; set; } = new List<NotepadData>();
+@@ -10,5 +31,14 @@ namespace Tascade.Models
+         public bool AutoSave { get; set; } = true;
+         public bool ShowCompletedTasks { get; set; } = true;
+         public bool VimModeEnabled { get; set; } = false;
++        public AutoCompleteSettings AutoCompleteSettings { get; set; } = new AutoCompleteSettings();
++        
++        // New toolbar-related settings
++        public bool WordWrapEnabled { get; set; } = true;
++        public ViewMode CurrentViewMode { get; set; } = ViewMode.Markdown;
++        public double ZoomLevel { get; set; } = 1.0;
++        public bool ShowStatusBar { get; set; } = false;
++        public bool ShowTasksPanel { get; set; } = true;
++        public List<string> RecentFiles { get; set; } = new List<string>();
+     }
+ }
+diff --git a/Tascade/Services/VimModeService.cs b/Tascade/Services/VimModeService.cs
+index 447dc91..b19ca10 100644
+--- a/Tascade/Services/VimModeService.cs
++++ b/Tascade/Services/VimModeService.cs
+@@ -3,6 +3,7 @@ using System.Collections.Generic;
+ using System.Linq;
+ using Avalonia.Controls;
+ using Avalonia.Input;
++using Tascade.Models;
+ 
+ namespace Tascade.Services
+ {
+@@ -18,6 +19,7 @@ namespace Tascade.Services
+         private VimMode _currentMode = VimMode.Normal;
+         private string _commandBuffer = string.Empty;
+         private readonly TextBox _textBox;
++        private AutoCompleteService? _autoCompleteService;
+         
+         public event Action<VimMode>? ModeChanged;
+         public event Action<string>? CommandEntered;
+@@ -41,6 +43,12 @@ namespace Tascade.Services
+             private set => _commandBuffer = value ?? string.Empty;
+         }
+ 
++        public AutoCompleteService? AutoCompleteService
++        {
++            get => _autoCompleteService;
++            set => _autoCompleteService = value;
++        }
++
+         public VimModeService(TextBox textBox)
+         {
+             _textBox = textBox ?? throw new ArgumentNullException(nameof(textBox));
+@@ -123,6 +131,16 @@ namespace Tascade.Services
+                     CurrentMode = VimMode.Command;
+                     CommandBuffer = ":";
+                     return true;
++                case Key.Tab:
++                    // Trigger completion in normal mode (like vim's Ctrl+N)
++                    TriggerCompletion();
++                    return true;
++                case Key.N when modifiers == KeyModifiers.Control: // Ctrl+N
++                    TriggerCompletion();
++                    return true;
++                case Key.P when modifiers == KeyModifiers.Control: // Ctrl+P
++                    TriggerCompletion();
++                    return true;
+                 case Key.Escape:
+                     return true; // Stay in normal mode
+             }
+@@ -138,6 +156,20 @@ namespace Tascade.Services
+                     CurrentMode = VimMode.Normal;
+                     MoveCursor(-1, 0); // Move back one position like vim
+                     return true;
++                case Key.Tab:
++                    // Handle tab completion in insert mode
++                    if (modifiers == KeyModifiers.Control)
++                    {
++                        TriggerCompletion();
++                        return true;
++                    }
++                    break;
++                case Key.N when modifiers == KeyModifiers.Control: // Ctrl+N
++                    TriggerCompletion();
++                    return true;
++                case Key.P when modifiers == KeyModifiers.Control: // Ctrl+P
++                    TriggerCompletion();
++                    return true;
+             }
+             
+             return false; // Let normal text input through
+@@ -160,6 +192,10 @@ namespace Tascade.Services
+                         CommandBuffer = CommandBuffer[..^1];
+                     }
+                     return true;
++                case Key.Tab:
++                    // Trigger command completion
++                    TriggerCommandCompletion();
++                    return true;
+             }
+             
+             // Add character to command buffer
+@@ -176,6 +212,41 @@ namespace Tascade.Services
+             return false;
+         }
+ 
++        private void TriggerCompletion()
++        {
++            if (_autoCompleteService != null && _textBox is not null)
++            {
++                var text = _textBox.Text ?? "";
++                var cursorPosition = _textBox.CaretIndex;
++                
++                if (_autoCompleteService.ShouldTriggerCompletion(text, cursorPosition))
++                {
++                    // This would trigger the completion popup
++                    // The actual UI handling would be done by the AutoCompleteTextBox control
++                    OnCompletionRequested?.Invoke(text, cursorPosition);
++                }
++            }
++        }
++
++        private void TriggerCommandCompletion()
++        {
++            if (_autoCompleteService != null)
++            {
++                var suggestions = _autoCompleteService.GetSuggestions(CommandBuffer);
++                if (suggestions.Any())
++                {
++                    // Auto-complete the command with the first suggestion
++                    var firstSuggestion = suggestions.First();
++                    if (firstSuggestion.Type == SuggestionType.Command)
++                    {
++                        CommandBuffer = firstSuggestion.Text;
++                    }
++                }
++            }
++        }
++
++        public event Action<string, int>? OnCompletionRequested;
++
+         private void ExecuteCommand()
+         {
+             var command = CommandBuffer.Trim();
+diff --git a/Tascade/ViewModels/MainWindowViewModel.cs b/Tascade/ViewModels/MainWindowViewModel.cs
+index 8cd6771..529aa6c 100644
+--- a/Tascade/ViewModels/MainWindowViewModel.cs
++++ b/Tascade/ViewModels/MainWindowViewModel.cs
+@@ -1,8 +1,11 @@
+ ?using System;
++using System.Collections.Generic;
+ using System.Collections.ObjectModel;
++using System.IO;
+ using System.Linq;
+ using System.Threading.Tasks;
+ using Avalonia;
++using Avalonia.Controls;
+ using Avalonia.Platform.Storage;
+ using CommunityToolkit.Mvvm.ComponentModel;
+ using CommunityToolkit.Mvvm.Input;
+@@ -16,7 +19,11 @@ namespace Tascade.ViewModels;
+ public partial class MainWindowViewModel : ViewModelBase
+ {
+     private readonly FileStorageService _storageService;
++    private FileOperationsService _fileOperationsService;
+     private AppSettings _settings;
++    private AutoCompleteService _autoCompleteService;
++    private VimModeService? _vimModeService;
++    private string? _currentFilePath;
+     
+     [ObservableProperty]
+     private NotepadData _currentNotepad;
+@@ -35,6 +42,31 @@ public partial class MainWindowViewModel : ViewModelBase
+     
+     [ObservableProperty]
+     private bool _autoSave = true;
++
++    // New toolbar-related properties
++    [ObservableProperty]
++    private bool _wordWrapEnabled = true;
++    
++    [ObservableProperty]
++    private ViewMode _currentViewMode = ViewMode.Markdown;
++    
++    [ObservableProperty]
++    private double _zoomLevel = 1.0;
++    
++    [ObservableProperty]
++    private bool _showStatusBar = false;
++    
++    [ObservableProperty]
++    private bool _showTasksPanel = true;
++    
++    [ObservableProperty]
++    private bool _canUndo = false;
++    
++    [ObservableProperty]
++    private bool _canRedo = false;
++
++    public AutoCompleteService AutoCompleteService => _autoCompleteService;
++    public VimModeService? VimModeService => _vimModeService;
+     
+     public ObservableCollection<NotepadData> Notepads { get; }
+     public ObservableCollection<TaskItem> FilteredTasks { get; }
+@@ -44,6 +76,12 @@ public partial class MainWindowViewModel : ViewModelBase
+         _storageService = new FileStorageService();
+         _settings = _storageService.LoadSettings();
+         
++        // Initialize FileOperationsService (will be set later with TopLevel)
++        _fileOperationsService = null!;
++        
++        // Initialize AutoCompleteService
++        _autoCompleteService = new AutoCompleteService(_settings.AutoCompleteSettings);
++        
+         Notepads = new ObservableCollection<NotepadData>(_settings.Notepads);
+         FilteredTasks = new ObservableCollection<TaskItem>();
+         
+@@ -68,8 +106,49 @@ public partial class MainWindowViewModel : ViewModelBase
+         TasksWidth = _settings.TasksWidth;
+         AutoSave = _settings.AutoSave;
+         
++        // Load new toolbar settings
++        WordWrapEnabled = _settings.WordWrapEnabled;
++        CurrentViewMode = _settings.CurrentViewMode;
++        ZoomLevel = _settings.ZoomLevel;
++        ShowStatusBar = _settings.ShowStatusBar;
++        ShowTasksPanel = _settings.ShowTasksPanel;
++        
+         UpdateFilteredTasks();
+     }
++
++    public void InitializeFileOperations(TopLevel topLevel)
++    {
++        _fileOperationsService = new FileOperationsService(topLevel);
++        
++        // Subscribe to file operation events
++        _fileOperationsService.FileOpened += OnFileOpened;
++        _fileOperationsService.FileSaved += OnFileSaved;
++        _fileOperationsService.RecentFilesUpdated += OnRecentFilesUpdated;
++        
++        // Load recent files
++        var recentFilesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Tascade", "recent_files.json");
++        Directory.CreateDirectory(Path.GetDirectoryName(recentFilesPath)!);
++        _fileOperationsService.LoadRecentFiles(recentFilesPath);
++    }
++
++    private void OnFileOpened(string filePath)
++    {
++        _currentFilePath = filePath;
++        // Update window title to include file name
++        System.Diagnostics.Debug.WriteLine($"File opened: {filePath}");
++    }
++
++    private void OnFileSaved(string filePath)
++    {
++        _currentFilePath = filePath;
++        System.Diagnostics.Debug.WriteLine($"File saved: {filePath}");
++    }
++
++    private void OnRecentFilesUpdated(System.Collections.Generic.List<string> recentFiles)
++    {
++        _settings.RecentFiles = recentFiles;
++        MarkDirty();
++    }
+     
+     partial void OnCurrentNotepadChanged(NotepadData value)
+     {
+@@ -210,19 +289,35 @@ public partial class MainWindowViewModel : ViewModelBase
+     }
+     
+     [RelayCommand]
+-    private void Save()
++    private async Task Save()
+     {
+-        _settings.Notepads = Notepads.ToList();
+-        _settings.SelectedIndex = Notepads.IndexOf(CurrentNotepad);
+-        _settings.ShowCompletedTasks = ShowCompleted;
+-        _settings.TasksWidth = TasksWidth;
+-        _settings.AutoSave = AutoSave;
++        if (_fileOperationsService == null) return;
+         
+-        _storageService.SaveSettings(_settings);
++        string filePath;
++        
++        if (string.IsNullOrEmpty(_currentFilePath))
++        {
++            // No current file path, use Save As dialog
++            var defaultFileName = $"{CurrentNotepad.Title}.txt";
++            filePath = await _fileOperationsService.SaveFileDialogAsync(defaultFileName);
++            if (string.IsNullOrEmpty(filePath))
++                return; // User cancelled
++        }
++        else
++        {
++            filePath = _currentFilePath;
++        }
++
++        var success = await _fileOperationsService.SaveNotepadAsync(filePath, CurrentNotepad);
++        if (success)
++        {
++            _currentFilePath = filePath;
++            MarkDirty();
++        }
+     }
+     
+     [RelayCommand]
+-    private async Task ExportToText()
++    private void ExportToText()
+     {
+         // For now, use a simple export to the current directory
+         // TODO: Implement proper file dialog when we have access to TopLevel
+@@ -278,12 +373,263 @@ public partial class MainWindowViewModel : ViewModelBase
+         }
+     }
+     
++    public void SetVimModeService(Avalonia.Controls.TextBox textBox)
++    {
++        if (_settings.VimModeEnabled && textBox != null)
++        {
++            _vimModeService = new VimModeService(textBox);
++            _vimModeService.AutoCompleteService = _autoCompleteService;
++            _vimModeService.CommandEntered += HandleVimCommand;
++        }
++    }
++
++    private void HandleVimCommand(string command)
++    {
++        switch (command.ToLower())
++        {
++            case "save":
++                Save();
++                break;
++            case "quit":
++                // TODO: Handle quit command
++                break;
++            case "quit!":
++                // TODO: Handle force quit command
++                break;
++        }
++    }
++
+     private void MarkDirty()
+     {
+         CurrentNotepad.LastSaved = DateTime.Now;
+         if (AutoSave)
+         {
+-            Save();
++            _ = Save(); // Fire and forget for auto-save
++        }
++    }
++
++    // New toolbar commands - File operations
++    [RelayCommand]
++    private void NewFile()
++    {
++        // Clear current file path and create new notepad
++        _currentFilePath = null;
++        AddNewNotepad();
++    }
++
++    [RelayCommand]
++    private async Task OpenFile()
++    {
++        if (_fileOperationsService == null) return;
++        
++        var filePath = await _fileOperationsService.OpenFileDialogAsync();
++        if (!string.IsNullOrEmpty(filePath))
++        {
++            var notepad = await _fileOperationsService.LoadNotepadAsync(filePath);
++            if (notepad != null)
++            {
++                Notepads.Add(notepad);
++                CurrentNotepad = notepad;
++                MarkDirty();
++            }
++        }
++    }
++
++    [RelayCommand]
++    private async Task SaveAs()
++    {
++        if (_fileOperationsService == null) return;
++        
++        var defaultFileName = string.IsNullOrEmpty(_currentFilePath) 
++            ? $"{CurrentNotepad.Title}.txt" 
++            : Path.GetFileName(_currentFilePath);
++            
++        var filePath = await _fileOperationsService.SaveFileDialogAsync(defaultFileName);
++        if (!string.IsNullOrEmpty(filePath))
++        {
++            var success = await _fileOperationsService.SaveNotepadAsync(filePath, CurrentNotepad);
++            if (success)
++            {
++                _currentFilePath = filePath;
++                MarkDirty();
++            }
++        }
++    }
++
++    [RelayCommand]
++    private void Print()
++    {
++        // TODO: Implement print functionality
++        System.Diagnostics.Debug.WriteLine("Print command triggered");
++    }
++
++    [RelayCommand]
++    private void Exit()
++    {
++        // Save settings before exit
++        _ = SaveSettingsAsync();
++        
++        // TODO: Implement application exit - this would typically close the main window
++        System.Diagnostics.Debug.WriteLine("Exit command triggered - settings saved");
++    }
++
++    private async Task SaveSettingsAsync()
++    {
++        _settings.Notepads = Notepads.ToList();
++        _settings.SelectedIndex = Notepads.IndexOf(CurrentNotepad);
++        _settings.ShowCompletedTasks = ShowCompleted;
++        _settings.TasksWidth = TasksWidth;
++        _settings.AutoSave = AutoSave;
++        
++        // Save new toolbar settings
++        _settings.WordWrapEnabled = WordWrapEnabled;
++        _settings.CurrentViewMode = CurrentViewMode;
++        _settings.ZoomLevel = ZoomLevel;
++        _settings.ShowStatusBar = ShowStatusBar;
++        _settings.ShowTasksPanel = ShowTasksPanel;
++        
++        _storageService.SaveSettings(_settings);
++        
++        // Save recent files
++        if (_fileOperationsService != null)
++        {
++            var recentFilesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Tascade", "recent_files.json");
++            _fileOperationsService.SaveRecentFiles(recentFilesPath);
++        }
++    }
++
++    // Edit operations
++    [RelayCommand]
++    private void Undo()
++    {
++        // TODO: Implement undo functionality
++        System.Diagnostics.Debug.WriteLine("Undo command triggered");
++    }
++
++    [RelayCommand]
++    private void Redo()
++    {
++        // TODO: Implement redo functionality
++        System.Diagnostics.Debug.WriteLine("Redo command triggered");
++    }
++
++    [RelayCommand]
++    private void Cut()
++    {
++        // TODO: Implement cut functionality
++        System.Diagnostics.Debug.WriteLine("Cut command triggered");
++    }
++
++    [RelayCommand]
++    private void Copy()
++    {
++        // TODO: Implement copy functionality
++        System.Diagnostics.Debug.WriteLine("Copy command triggered");
++    }
++
++    [RelayCommand]
++    private void Paste()
++    {
++        // TODO: Implement paste functionality
++        System.Diagnostics.Debug.WriteLine("Paste command triggered");
++    }
++
++    [RelayCommand]
++    private void Find()
++    {
++        // TODO: Implement find functionality
++        System.Diagnostics.Debug.WriteLine("Find command triggered");
++    }
++
++    [RelayCommand]
++    private void Replace()
++    {
++        // TODO: Implement replace functionality
++        System.Diagnostics.Debug.WriteLine("Replace command triggered");
++    }
++
++    [RelayCommand]
++    private void SelectAll()
++    {
++        // TODO: Implement select all functionality
++        System.Diagnostics.Debug.WriteLine("Select All command triggered");
++    }
++
++    [RelayCommand]
++    private void InsertDateTime()
++    {
++        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
++        // TODO: Insert timestamp at cursor position
++        System.Diagnostics.Debug.WriteLine($"Insert timestamp: {timestamp}");
++    }
++
++    // View operations
++    [RelayCommand]
++    private void ToggleWordWrap()
++    {
++        WordWrapEnabled = !WordWrapEnabled;
++        _settings.WordWrapEnabled = WordWrapEnabled;
++        MarkDirty();
++    }
++
++    [RelayCommand]
++    private void SetViewMode(ViewMode mode)
++    {
++        CurrentViewMode = mode;
++        _settings.CurrentViewMode = mode;
++        MarkDirty();
++    }
++
++    [RelayCommand]
++    private void ZoomIn()
++    {
++        if (ZoomLevel < 2.0)
++        {
++            ZoomLevel += 0.1;
++            _settings.ZoomLevel = ZoomLevel;
++            MarkDirty();
+         }
+     }
++
++    [RelayCommand]
++    private void ZoomOut()
++    {
++        if (ZoomLevel > 0.5)
++        {
++            ZoomLevel -= 0.1;
++            _settings.ZoomLevel = ZoomLevel;
++            MarkDirty();
++        }
++    }
++
++    [RelayCommand]
++    private void ResetZoom()
++    {
++        ZoomLevel = 1.0;
++        _settings.ZoomLevel = ZoomLevel;
++        MarkDirty();
++    }
++
++    [RelayCommand]
++    private void ToggleTasksPanel()
++    {
++        ShowTasksPanel = !ShowTasksPanel;
++        _settings.ShowTasksPanel = ShowTasksPanel;
++        MarkDirty();
++    }
++
++    [RelayCommand]
++    private void ToggleStatusBar()
++    {
++        ShowStatusBar = !ShowStatusBar;
++        _settings.ShowStatusBar = ShowStatusBar;
++        MarkDirty();
++    }
++
++    [RelayCommand]
++    private void ShowSettings()
++    {
++        // TODO: Implement settings dialog
++        System.Diagnostics.Debug.WriteLine("Settings command triggered");
++    }
+ }
+diff --git a/Tascade/Views/MainWindow.axaml b/Tascade/Views/MainWindow.axaml
+index 9b64029..7dd9b1f 100644
+--- a/Tascade/Views/MainWindow.axaml
++++ b/Tascade/Views/MainWindow.axaml
+@@ -22,18 +22,88 @@
+ 
+         <!-- Toolbar -->
+         <Border Grid.Row="0" Classes="toolbar" Padding="4,2">
+-            <StackPanel Orientation="Horizontal" Spacing="4">
+-                <Button Content="File" Command="{Binding SaveCommand}" Padding="8,2"/>
+-                <Menu>
++            <Menu>
++                <MenuItem Header="File">
++                    <MenuItem Header="New" Command="{Binding NewFileCommand}" HotKey="N, Ctrl"/>
++                    <MenuItem Header="Open" Command="{Binding OpenFileCommand}" HotKey="O, Ctrl"/>
++                    <Separator/>
++                    <MenuItem Header="Save" Command="{Binding SaveCommand}" HotKey="S, Ctrl"/>
++                    <MenuItem Header="Save As" Command="{Binding SaveAsCommand}" HotKey="S, Ctrl+Shift"/>
++                    <Separator/>
++                    <MenuItem Header="Recent Files">
++                        <!-- This will be populated dynamically from ViewModel -->
++                    </MenuItem>
++                    <Separator/>
++                    <MenuItem Header="Print" Command="{Binding PrintCommand}" HotKey="P, Ctrl"/>
++                    <Separator/>
+                     <MenuItem Header="Export">
+                         <MenuItem Header="Export as Text" Command="{Binding ExportToTextCommand}"/>
+                         <MenuItem Header="Export as Markdown" Command="{Binding ExportToMarkdownCommand}"/>
+                         <MenuItem Header="Export as HTML" Command="{Binding ExportToHtmlCommand}"/>
+                     </MenuItem>
+-                </Menu>
+-                <Separator/>
+-                <CheckBox Content="Auto Save" IsChecked="{Binding AutoSave}" FontSize="12"/>
+-            </StackPanel>
++                    <Separator/>
++                    <MenuItem Header="Exit" Command="{Binding ExitCommand}"/>
++                </MenuItem>
++                
++                <MenuItem Header="Edit">
++                    <MenuItem Header="Undo" Command="{Binding UndoCommand}" HotKey="Z, Ctrl"/>
++                    <MenuItem Header="Redo" Command="{Binding RedoCommand}" HotKey="Y, Ctrl"/>
++                    <Separator/>
++                    <MenuItem Header="Cut" Command="{Binding CutCommand}" HotKey="X, Ctrl"/>
++                    <MenuItem Header="Copy" Command="{Binding CopyCommand}" HotKey="C, Ctrl"/>
++                    <MenuItem Header="Paste" Command="{Binding PasteCommand}" HotKey="V, Ctrl"/>
++                    <Separator/>
++                    <MenuItem Header="Find" Command="{Binding FindCommand}" HotKey="F, Ctrl"/>
++                    <MenuItem Header="Replace" Command="{Binding ReplaceCommand}" HotKey="H, Ctrl"/>
++                    <Separator/>
++                    <MenuItem Header="Select All" Command="{Binding SelectAllCommand}" HotKey="A, Ctrl"/>
++                    <MenuItem Header="Time/Date" Command="{Binding InsertDateTimeCommand}" HotKey="F5"/>
++                </MenuItem>
++                
++                <MenuItem Header="View">
++                    <MenuItem Header="Word Wrap" Command="{Binding ToggleWordWrapCommand}">
++                        <MenuItem.Icon>
++                            <CheckBox IsChecked="{Binding WordWrapEnabled}" IsEnabled="False"/>
++                        </MenuItem.Icon>
++                    </MenuItem>
++                    <Separator/>
++                    <MenuItem Header="Plain Text Mode" Command="{Binding SetViewModeCommand}" CommandParameter="Plain">
++                        <MenuItem.Icon>
++                            <CheckBox IsChecked="{Binding CurrentViewMode, Converter={StaticResource ViewModeToBoolConverter}, ConverterParameter=Plain}" IsEnabled="False"/>
++                        </MenuItem.Icon>
++                    </MenuItem>
++                    <MenuItem Header="Markdown Mode" Command="{Binding SetViewModeCommand}" CommandParameter="Markdown">
++                        <MenuItem.Icon>
++                            <CheckBox IsChecked="{Binding CurrentViewMode, Converter={StaticResource ViewModeToBoolConverter}, ConverterParameter=Markdown}" IsEnabled="False"/>
++                        </MenuItem.Icon>
++                    </MenuItem>
++                    <MenuItem Header="Split View" Command="{Binding SetViewModeCommand}" CommandParameter="Split">
++                        <MenuItem.Icon>
++                            <CheckBox IsChecked="{Binding CurrentViewMode, Converter={StaticResource ViewModeToBoolConverter}, ConverterParameter=Split}" IsEnabled="False"/>
++                        </MenuItem.Icon>
++                    </MenuItem>
++                    <Separator/>
++                    <MenuItem Header="Zoom In" Command="{Binding ZoomInCommand}" HotKey="OemPlus, Ctrl"/>
++                    <MenuItem Header="Zoom Out" Command="{Binding ZoomOutCommand}" HotKey="OemMinus, Ctrl"/>
++                    <MenuItem Header="Reset Zoom" Command="{Binding ResetZoomCommand}" HotKey="D0, Ctrl"/>
++                    <Separator/>
++                    <MenuItem Header="Show Tasks Panel" Command="{Binding ToggleTasksPanelCommand}">
++                        <MenuItem.Icon>
++                            <CheckBox IsChecked="{Binding ShowTasksPanel}" IsEnabled="False"/>
++                        </MenuItem.Icon>
++                    </MenuItem>
++                    <MenuItem Header="Show Status Bar" Command="{Binding ToggleStatusBarCommand}">
++                        <MenuItem.Icon>
++                            <CheckBox IsChecked="{Binding ShowStatusBar}" IsEnabled="False"/>
++                        </MenuItem.Icon>
++                    </MenuItem>
++                </MenuItem>
++                
++                <MenuItem Header="Options">
++                    <CheckBox Content="Auto Save" IsChecked="{Binding AutoSave}" FontSize="12"/>
++                    <MenuItem Header="Settings" Command="{Binding ShowSettingsCommand}"/>
++                </MenuItem>
++            </Menu>
+         </Border>
+ 
+         <!-- Main Content -->
