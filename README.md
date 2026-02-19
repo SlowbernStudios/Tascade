@@ -19,7 +19,7 @@ Tascade is a cross-platform desktop notes app with built-in task tracking, a ter
 
 Release artifacts are published on GitHub Releases:
 
-- https://github.com/SlowbernStudios/Tascade/releases
+- <https://github.com/SlowbernStudios/Tascade/releases>
 
 ## Build And Run
 
@@ -104,10 +104,9 @@ MIT. See `LICENSE`.
 
 ## Changelog
 
-### v1.0.0 (2026-02-19)
+### v1.0.0 (2026-02-18)
 
 - First public release of Tascade
 - Rebrand from TaskTango to Tascade
 - Bundled JetBrains Mono font and custom app icons
 - Cross-platform release automation (local script + GitHub Actions)
-
