@@ -26,5 +26,6 @@
     <PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
     <PackageReference Include="AvaloniaEdit" Version="0.10.12" />
     <PackageReference Include="System.Text.Encodings.Web" Version="9.0.0" />
+    <PackageReference Include="Markdig" Version="0.37.0" />
   </ItemGroup>
 </Project>

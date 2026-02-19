@@ -24,8 +24,13 @@
         <Border Grid.Row="0" Classes="toolbar" Padding="4,2">
             <StackPanel Orientation="Horizontal" Spacing="4">
                 <Button Content="File" Command="{Binding SaveCommand}" Padding="8,2"/>
-                <Button Content="Edit" Padding="8,2"/>
-                <Button Content="View" Padding="8,2"/>
+                <Menu>
+                    <MenuItem Header="Export">
+                        <MenuItem Header="Export as Text" Command="{Binding ExportToTextCommand}"/>
+                        <MenuItem Header="Export as Markdown" Command="{Binding ExportToMarkdownCommand}"/>
+                        <MenuItem Header="Export as HTML" Command="{Binding ExportToHtmlCommand}"/>
+                    </MenuItem>
+                </Menu>
                 <Separator/>
                 <CheckBox Content="Auto Save" IsChecked="{Binding AutoSave}" FontSize="12"/>
             </StackPanel>
@@ -109,7 +114,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <controls:RichTextEditor Grid.Row="0" Name="RichTextEditor"/>
+                    <controls:MarkdownEditor Grid.Row="0" Name="MarkdownEditor"/>
                 </Grid>
             </Border>
 

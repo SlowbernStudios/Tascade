@@ -240,6 +240,44 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
     
+    [RelayCommand]
+    private async Task ExportToMarkdown()
+    {
+        // Export as Markdown file
+        var fileName = $"Notepad_{CurrentNotepad.Title}_{DateTime.Now:yyyy-MM-dd_HHmm}.md";
+        var filePath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
+        
+        try
+        {
+            await System.IO.File.WriteAllTextAsync(filePath, CurrentNotepad.Content.MarkdownContent);
+            System.Diagnostics.Debug.WriteLine($"Markdown exported to: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            // TODO: Show error dialog
+            System.Diagnostics.Debug.WriteLine($"Markdown export failed: {ex.Message}");
+        }
+    }
+    
+    [RelayCommand]
+    private async Task ExportToHtml()
+    {
+        // Export as HTML file
+        var fileName = $"Notepad_{CurrentNotepad.Title}_{DateTime.Now:yyyy-MM-dd_HHmm}.html";
+        var filePath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
+        
+        try
+        {
+            await System.IO.File.WriteAllTextAsync(filePath, CurrentNotepad.Content.HtmlContent);
+            System.Diagnostics.Debug.WriteLine($"HTML exported to: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            // TODO: Show error dialog
+            System.Diagnostics.Debug.WriteLine($"HTML export failed: {ex.Message}");
+        }
+    }
+    
     private void MarkDirty()
     {
         CurrentNotepad.LastSaved = DateTime.Now;
