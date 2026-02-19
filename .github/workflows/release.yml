@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  TIMESTAMP_URL: http://timestamp.digicert.com
+
 jobs:
   build:
     name: Build ${{ matrix.rid }}
@@ -44,6 +47,14 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
+      - name: Decode code signing cert
+        if: startsWith(matrix.rid, 'win-') && secrets.CODESIGN_PFX_BASE64 != '' && secrets.CODESIGN_PFX_PASSWORD != ''
+        shell: pwsh
+        run: |
+          $pfxPath = "$env:RUNNER_TEMP\tascade-codesign.pfx"
+          [System.IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String("${{ secrets.CODESIGN_PFX_BASE64 }}"))
+          "PFX_PATH=$pfxPath" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Publish
         shell: pwsh
         run: |
@@ -54,6 +65,10 @@ jobs:
             /p:PublishSingleFile=true `
             /p:DebugType=None `
             /p:DebugSymbols=false `
+            /p:EnableSigning=${{ startsWith(matrix.rid, 'win-') && secrets.CODESIGN_PFX_BASE64 != '' && secrets.CODESIGN_PFX_PASSWORD != '' }} `
+            /p:CodeSignPfxPath="$env:PFX_PATH" `
+            /p:CodeSignPfxPassword="${{ secrets.CODESIGN_PFX_PASSWORD }}" `
+            /p:TimeStampUrl="${{ env.TIMESTAMP_URL }}" `
             -o "publish/${{ matrix.rid }}"
 
       - name: Archive
@@ -91,4 +106,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-

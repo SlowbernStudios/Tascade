@@ -6,6 +6,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\tascade.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <EnableSigning Condition="'$(EnableSigning)' == ''">false</EnableSigning>
+    <TimeStampUrl Condition="'$(TimeStampUrl)' == ''">http://timestamp.digicert.com</TimeStampUrl>
+    <SignToolPath Condition="'$(SignToolPath)' == ''">signtool</SignToolPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,6 +31,16 @@
     <PackageReference Include="System.Text.Encodings.Web" Version="9.0.0" />
     <PackageReference Include="Markdig" Version="0.37.0" />
   </ItemGroup>
+
+  <Target Name="SignPublishedWindowsExe"
+          AfterTargets="Publish"
+          Condition="'$(EnableSigning)' == 'true'
+                     and $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))
+                     and '$(CodeSignPfxPath)' != ''
+                     and Exists('$(CodeSignPfxPath)')
+                     and '$(CodeSignPfxPassword)' != ''">
+    <Exec Command='"$(SignToolPath)" sign /f "$(CodeSignPfxPath)" /p "$(CodeSignPfxPassword)" /fd SHA256 /tr "$(TimeStampUrl)" /td SHA256 "$(PublishDir)Tascade.exe"' />
+  </Target>
 </Project>
 
 
