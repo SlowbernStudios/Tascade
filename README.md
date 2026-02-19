@@ -1,61 +1,84 @@
 # Tascade
 
-Tascade is a cross-platform desktop notes app with built-in task tracking, a terminal-inspired UI, markdown editing, and autosave-first workflow.
+Tascade is a cross-platform desktop notes app with integrated task tracking, markdown editing, and an autosave-first workflow.
 
-## v1.0 Highlights
+## Features
 
-- Notes + tasks split-pane layout
-- Multiple tabs/pages
+- Notes + tasks split layout
+- Multiple notepad tabs
 - Rename current tab inline
-- Markdown editor with Editor / Preview / Split modes
-- Auto-switch to Split mode when markdown syntax is detected
-- Task list with add, complete, delete, clear-completed, and filtering
-- Enter-to-add task shortcut
-- Autosave-backed local JSON storage
-- Open / Save / Save As + export to TXT / Markdown / HTML
-- JetBrains Mono bundled in app assets (no system font install required)
+- Markdown editor with `Editor`, `Preview`, and `Split` modes
+- Auto-switch to `Split` when markdown syntax is detected
+- Task list: add, complete, delete, clear completed, and filter
+- `Enter` to add a task
+- Open / Save / Save As
+- Export to TXT / Markdown / HTML
+- Bundled JetBrains Mono font (no system install required)
 
-## Downloads
+## Download
 
-Release artifacts are published on GitHub Releases:
+Release assets are published on GitHub Releases:
 
 - <https://github.com/SlowbernStudios/Tascade/releases>
 
 ## Build And Run
 
-### Prerequisites
+Prerequisite:
 
 - .NET 9 SDK
 
-### Local Run
+Run locally:
 
 ```bash
 dotnet run --project Tascade/Tascade.csproj
 ```
 
-### Local Release Packaging
+Build:
 
-Use the included script:
+```bash
+dotnet build Tascade/Tascade.csproj
+```
+
+## Release Packaging
+
+Local packaging script:
 
 ```powershell
 .\release.ps1 -Version v1.0.0
 ```
 
-This creates archives under `artifacts/<version>/` for:
+RIDs packaged by default:
 
 - `win-x64`, `win-arm64`
 - `linux-x64`, `linux-arm64`
 - `osx-x64`, `osx-arm64`
 
+## Signed Windows Releases
+
+The project supports optional Authenticode signing for Windows publish output.
+
+Local signed packaging:
+
+```powershell
+.\release.ps1 `
+  -Version v1.0.0 `
+  -EnableSigning `
+  -CodeSignPfxPath "C:\path\codesign.pfx" `
+  -CodeSignPfxPassword "your-password"
+```
+
+GitHub Actions release signing is supported via secrets:
+
+- `CODESIGN_PFX_BASE64`
+- `CODESIGN_PFX_PASSWORD`
+
 ## Automated GitHub Releases
 
-This repo includes `.github/workflows/release.yml`.
+Workflow: `.github/workflows/release.yml`
 
-Behavior:
+Trigger:
 
-- Trigger: push a tag matching `v*`
-- Builds all supported RIDs
-- Uploads platform archives to the GitHub Release
+- Push a tag matching `v*`
 
 Example:
 
@@ -66,47 +89,16 @@ git push origin v1.0.0
 
 ## Data Storage
 
-Settings and data are stored in JSON:
-
-- Windows: `%APPDATA%/Tascade/settings.json`
-
-Recent files are stored at:
-
+- `%APPDATA%/Tascade/settings.json`
 - `%APPDATA%/Tascade/recent_files.json`
 
-## Notes On Current Implementation
+## Contributing And Policies
 
-- Several menu commands in Edit/View are present but currently placeholders (for example Undo/Redo/Cut/Copy/Paste/Find/Replace/Print).
-- Task display is already sorted in the filtered view (incomplete first, then creation time), so no separate Sort action is shown in the UI.
-
-## Project Layout
-
-```text
-.
-├── Tascade/
-│   ├── Assets/
-│   ├── Controls/
-│   ├── Converters/
-│   ├── Models/
-│   ├── Services/
-│   ├── ViewModels/
-│   ├── Views/
-│   ├── App.axaml
-│   ├── Program.cs
-│   └── Tascade.csproj
-├── .github/workflows/release.yml
-└── release.ps1
-```
+- Contributing guide: `CONTRIBUTING.md`
+- Code of Conduct: `CODE_OF_CONDUCT.md`
+- Security policy: `SECURITY.md`
 
 ## License
 
 MIT. See `LICENSE`.
 
-## Changelog
-
-### v1.0.0 (2026-02-18)
-
-- First public release of Tascade
-- Rebrand from TaskTango to Tascade
-- Bundled JetBrains Mono font and custom app icons
-- Cross-platform release automation (local script + GitHub Actions)
