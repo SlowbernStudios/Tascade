@@ -1,9 +1,13 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Tascade.Models;
+using Tascade.Services;
 
 namespace Tascade.Controls
 {
@@ -13,6 +17,63 @@ namespace Tascade.Controls
         private int _lastSelectionStart;
         private int _lastSelectionLength;
         private bool _autoSplitTriggered;
+        private bool _isUpdatingViewMode;
+
+        public event Action<bool, bool>? HistoryStateChanged;
+
+        public static readonly StyledProperty<bool> AutoMarkdownEnabledProperty =
+            AvaloniaProperty.Register<MarkdownEditor, bool>(nameof(AutoMarkdownEnabled), defaultValue: true);
+
+        public static readonly StyledProperty<ViewMode> ViewModeProperty =
+            AvaloniaProperty.Register<MarkdownEditor, ViewMode>(nameof(ViewMode), defaultValue: ViewMode.Plain);
+
+        public static readonly StyledProperty<AutoCompleteService?> AutoCompleteServiceProperty =
+            AvaloniaProperty.Register<MarkdownEditor, AutoCompleteService?>(nameof(AutoCompleteService));
+
+        public static readonly StyledProperty<VimModeService?> VimModeServiceProperty =
+            AvaloniaProperty.Register<MarkdownEditor, VimModeService?>(nameof(VimModeService));
+
+        public static readonly StyledProperty<bool> WordWrapEnabledProperty =
+            AvaloniaProperty.Register<MarkdownEditor, bool>(nameof(WordWrapEnabled), defaultValue: true);
+
+        public static readonly StyledProperty<double> ZoomLevelProperty =
+            AvaloniaProperty.Register<MarkdownEditor, double>(nameof(ZoomLevel), defaultValue: 1.0);
+
+        public bool AutoMarkdownEnabled
+        {
+            get => GetValue(AutoMarkdownEnabledProperty);
+            set => SetValue(AutoMarkdownEnabledProperty, value);
+        }
+
+        public ViewMode ViewMode
+        {
+            get => GetValue(ViewModeProperty);
+            set => SetValue(ViewModeProperty, value);
+        }
+
+        public AutoCompleteService? AutoCompleteService
+        {
+            get => GetValue(AutoCompleteServiceProperty);
+            set => SetValue(AutoCompleteServiceProperty, value);
+        }
+
+        public VimModeService? VimModeService
+        {
+            get => GetValue(VimModeServiceProperty);
+            set => SetValue(VimModeServiceProperty, value);
+        }
+
+        public bool WordWrapEnabled
+        {
+            get => GetValue(WordWrapEnabledProperty);
+            set => SetValue(WordWrapEnabledProperty, value);
+        }
+
+        public double ZoomLevel
+        {
+            get => GetValue(ZoomLevelProperty);
+            set => SetValue(ZoomLevelProperty, value);
+        }
 
         public MarkdownEditor()
         {
@@ -20,6 +81,26 @@ namespace Tascade.Controls
             DataContext = _content;
             SetupToolbarEvents();
             ApplyViewMode();
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+
+            if (change.Property == ViewModeProperty && !_isUpdatingViewMode)
+            {
+                ApplyViewMode();
+            }
+
+            if (change.Property == AutoCompleteServiceProperty || change.Property == VimModeServiceProperty)
+            {
+                ApplyEditorServices();
+            }
+
+            if (change.Property == WordWrapEnabledProperty || change.Property == ZoomLevelProperty)
+            {
+                ApplyEditorPresentation();
+            }
         }
 
         private void InitializeComponent()
@@ -36,6 +117,7 @@ namespace Tascade.Controls
                 DataContext = _content;
                 _autoSplitTriggered = false;
                 ApplyAutoSplitIfMarkdown();
+                NotifyHistoryStateChanged();
             }
         }
 
@@ -62,16 +144,19 @@ namespace Tascade.Controls
             var combo = this.FindControl<ComboBox>("ViewModeComboBox");
             if (combo != null)
             {
-                combo.SelectionChanged += (_, _) => ApplyViewMode();
+                combo.SelectionChanged += (_, _) => OnViewModeSelectionChanged();
             }
 
-            var textBox = this.FindControl<TextBox>("MarkdownTextBox");
+            var textBox = GetEditorTextBox();
             if (textBox != null)
             {
                 textBox.TextChanged += OnEditorTextChanged;
                 textBox.KeyUp += OnEditorSelectionHostChanged;
                 textBox.PointerReleased += OnEditorSelectionHostChanged;
             }
+
+            ApplyEditorServices();
+            ApplyEditorPresentation();
         }
 
         private void ApplyViewMode()
@@ -82,11 +167,22 @@ namespace Tascade.Controls
             var splitter = this.FindControl<GridSplitter>("Splitter");
             var mainGrid = this.FindControl<Grid>("MainGrid");
 
-            var mode = combo?.SelectedIndex ?? 0;
+            var mode = ViewMode switch
+            {
+                ViewMode.Plain => 0,
+                ViewMode.Markdown => 1,
+                ViewMode.Split => 2,
+                _ => 0
+            };
 
             if (editor == null || preview == null || splitter == null || mainGrid == null)
             {
                 return;
+            }
+
+            if (combo != null && combo.SelectedIndex != mode)
+            {
+                combo.SelectedIndex = mode;
             }
 
             editor.IsVisible = mode is 0 or 2;
@@ -113,9 +209,34 @@ namespace Tascade.Controls
             }
         }
 
+        private void OnViewModeSelectionChanged()
+        {
+            var combo = this.FindControl<ComboBox>("ViewModeComboBox");
+            if (combo == null)
+            {
+                return;
+            }
+
+            var selectedMode = combo.SelectedIndex switch
+            {
+                1 => ViewMode.Markdown,
+                2 => ViewMode.Split,
+                _ => ViewMode.Plain
+            };
+
+            if (ViewMode != selectedMode)
+            {
+                _isUpdatingViewMode = true;
+                ViewMode = selectedMode;
+                _isUpdatingViewMode = false;
+            }
+
+            ApplyViewMode();
+        }
+
         private void WrapSelection(string prefix, string suffix)
         {
-            var textBox = this.FindControl<TextBox>("MarkdownTextBox");
+            var textBox = GetEditorTextBox();
             if (textBox == null)
             {
                 return;
@@ -133,7 +254,7 @@ namespace Tascade.Controls
 
         private void PrefixLine(string prefix)
         {
-            var textBox = this.FindControl<TextBox>("MarkdownTextBox");
+            var textBox = GetEditorTextBox();
             if (textBox == null)
             {
                 return;
@@ -146,7 +267,7 @@ namespace Tascade.Controls
 
         private void InsertText(string text)
         {
-            var textBox = this.FindControl<TextBox>("MarkdownTextBox");
+            var textBox = GetEditorTextBox();
             if (textBox == null)
             {
                 return;
@@ -210,17 +331,23 @@ namespace Tascade.Controls
         private void OnEditorTextChanged(object? sender, TextChangedEventArgs e)
         {
             ApplyAutoSplitIfMarkdown();
+            NotifyHistoryStateChanged();
+        }
+
+        private void NotifyHistoryStateChanged()
+        {
+            HistoryStateChanged?.Invoke(CanUndo, CanRedo);
         }
 
         private void ApplyAutoSplitIfMarkdown()
         {
-            if (_autoSplitTriggered)
+            if (_autoSplitTriggered || !AutoMarkdownEnabled)
             {
                 return;
             }
 
             var combo = this.FindControl<ComboBox>("ViewModeComboBox");
-            var textBox = this.FindControl<TextBox>("MarkdownTextBox");
+            var textBox = GetEditorTextBox();
             if (combo == null || textBox == null)
             {
                 return;
@@ -228,9 +355,214 @@ namespace Tascade.Controls
 
             if (combo.SelectedIndex == 0 && IsLikelyMarkdown(textBox.Text))
             {
-                combo.SelectedIndex = 2;
+                ViewMode = ViewMode.Split;
                 _autoSplitTriggered = true;
+                ApplyViewMode();
             }
+        }
+
+        private AutoCompleteTextBox? GetAutoCompleteEditor()
+        {
+            return this.FindControl<AutoCompleteTextBox>("MarkdownTextBox");
+        }
+
+        private TextBox? GetEditorTextBox()
+        {
+            return GetAutoCompleteEditor()?.EditorTextBox;
+        }
+
+        private void ApplyEditorServices()
+        {
+            var editor = GetAutoCompleteEditor();
+            if (editor == null)
+            {
+                return;
+            }
+
+            editor.AutoCompleteService = AutoCompleteService!;
+            editor.VimModeService = VimModeService;
+        }
+
+        private void ApplyEditorPresentation()
+        {
+            var textBox = GetEditorTextBox();
+            if (textBox == null)
+            {
+                return;
+            }
+
+            textBox.TextWrapping = WordWrapEnabled ? TextWrapping.Wrap : TextWrapping.NoWrap;
+            textBox.FontSize = Math.Max(8, 14 * ZoomLevel);
+        }
+
+        public bool CanUndo => GetEditorTextBox()?.CanUndo ?? false;
+
+        public bool CanRedo => GetEditorTextBox()?.CanRedo ?? false;
+
+        public void Undo()
+        {
+            GetEditorTextBox()?.Undo();
+            NotifyHistoryStateChanged();
+        }
+
+        public void Redo()
+        {
+            GetEditorTextBox()?.Redo();
+            NotifyHistoryStateChanged();
+        }
+
+        public void SelectAllText()
+        {
+            GetEditorTextBox()?.SelectAll();
+        }
+
+        public async System.Threading.Tasks.Task CopySelectionAsync()
+        {
+            var textBox = GetEditorTextBox();
+            var selectedText = textBox?.SelectedText;
+            if (textBox == null || string.IsNullOrEmpty(selectedText))
+            {
+                return;
+            }
+
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard != null)
+            {
+                await clipboard.SetTextAsync(selectedText);
+            }
+        }
+
+        public async System.Threading.Tasks.Task CutSelectionAsync()
+        {
+            var textBox = GetEditorTextBox();
+            if (textBox == null)
+            {
+                return;
+            }
+
+            var selectedText = textBox.SelectedText;
+            if (string.IsNullOrEmpty(selectedText))
+            {
+                return;
+            }
+
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard != null)
+            {
+                await clipboard.SetTextAsync(selectedText);
+            }
+
+            ReplaceSelection(textBox, string.Empty, textBox.SelectionStart, selectedText.Length);
+        }
+
+        public async System.Threading.Tasks.Task PasteAsync()
+        {
+            var textBox = GetEditorTextBox();
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (textBox == null || clipboard == null)
+            {
+                return;
+            }
+
+            var text = await clipboard.TryGetTextAsync();
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            ReplaceSelection(textBox, text, textBox.SelectionStart, textBox.SelectionEnd - textBox.SelectionStart);
+        }
+
+        public bool FindNext(string searchText, bool matchCase = false)
+        {
+            var textBox = GetEditorTextBox();
+            var text = textBox?.Text;
+            if (textBox == null || string.IsNullOrEmpty(text) || string.IsNullOrEmpty(searchText))
+            {
+                return false;
+            }
+
+            var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            var selectionEnd = Math.Max(textBox.SelectionEnd, textBox.CaretIndex);
+            var startIndex = Math.Clamp(selectionEnd, 0, text.Length);
+            var index = text.IndexOf(searchText, startIndex, comparison);
+            if (index < 0 && startIndex > 0)
+            {
+                index = text.IndexOf(searchText, 0, comparison);
+            }
+
+            if (index < 0)
+            {
+                return false;
+            }
+
+            textBox.Focus();
+            textBox.SelectionStart = index;
+            textBox.SelectionEnd = index + searchText.Length;
+            textBox.CaretIndex = index + searchText.Length;
+            return true;
+        }
+
+        public bool ReplaceCurrentSelection(string searchText, string replacement, bool matchCase = false)
+        {
+            var textBox = GetEditorTextBox();
+            if (textBox == null || string.IsNullOrEmpty(searchText))
+            {
+                return false;
+            }
+
+            var selectedText = textBox.SelectedText ?? string.Empty;
+            var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            if (!string.Equals(selectedText, searchText, comparison))
+            {
+                if (!FindNext(searchText, matchCase))
+                {
+                    return false;
+                }
+            }
+
+            var start = textBox.SelectionStart;
+            var length = Math.Max(0, textBox.SelectionEnd - textBox.SelectionStart);
+            ReplaceSelection(textBox, replacement, start, length);
+            textBox.SelectionStart = start;
+            textBox.SelectionEnd = start + replacement.Length;
+            return true;
+        }
+
+        public int ReplaceAll(string searchText, string replacement, bool matchCase = false)
+        {
+            var textBox = GetEditorTextBox();
+            var text = textBox?.Text;
+            if (textBox == null || string.IsNullOrEmpty(text) || string.IsNullOrEmpty(searchText))
+            {
+                return 0;
+            }
+
+            var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            var current = text;
+            var count = 0;
+            var startIndex = 0;
+
+            while (startIndex <= current.Length)
+            {
+                var index = current.IndexOf(searchText, startIndex, comparison);
+                if (index < 0)
+                {
+                    break;
+                }
+
+                current = current[..index] + replacement + current[(index + searchText.Length)..];
+                startIndex = index + replacement.Length;
+                count++;
+            }
+
+            if (count > 0)
+            {
+                textBox.Text = current;
+                textBox.CaretIndex = Math.Min(current.Length, startIndex);
+            }
+
+            return count;
         }
 
         private static bool IsLikelyMarkdown(string? text)

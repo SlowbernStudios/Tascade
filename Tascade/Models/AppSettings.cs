@@ -39,6 +39,7 @@ namespace Tascade.Models
         public double ZoomLevel { get; set; } = 1.0;
         public bool ShowStatusBar { get; set; } = false;
         public bool ShowTasksPanel { get; set; } = true;
+        public bool AutoMarkdownEnabled { get; set; } = true;
         public List<string> RecentFiles { get; set; } = new List<string>();
     }
 }

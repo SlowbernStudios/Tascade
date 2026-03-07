@@ -73,6 +73,8 @@ namespace Tascade.Controls
             set => SetValue(SelectedSuggestionIndexProperty, value);
         }
 
+        public TextBox EditorTextBox => MainTextBox;
+
         public List<SuggestionItem> Suggestions
         {
             get => _suggestions;
@@ -302,6 +304,12 @@ namespace Tascade.Controls
 
         private void ShowCompletion(string text, int cursorPosition)
         {
+            if (AutoCompleteService == null)
+            {
+                HideCompletion();
+                return;
+            }
+
             var wordBeforeCursor = GetWordBeforeCursor(text, cursorPosition);
             if (string.IsNullOrEmpty(wordBeforeCursor))
             {

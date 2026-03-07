@@ -64,7 +64,8 @@ namespace Tascade.Services
                 var notepad = new NotepadData
                 {
                     Title = Path.GetFileNameWithoutExtension(filePath),
-                    Content = new RichTextContent { MarkdownContent = content }
+                    Content = new RichTextContent { MarkdownContent = content },
+                    FilePath = filePath
                 };
 
                 AddRecent(filePath);

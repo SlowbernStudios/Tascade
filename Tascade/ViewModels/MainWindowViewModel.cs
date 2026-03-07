@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -19,7 +20,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private AppSettings _settings;
     private readonly AutoCompleteService _autoCompleteService;
     private VimModeService? _vimModeService;
-    private string? _currentFilePath;
 
     [ObservableProperty]
     private NotepadData _currentNotepad;
@@ -55,6 +55,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool _showTasksPanel = true;
 
     [ObservableProperty]
+    private bool _autoMarkdownEnabled = true;
+
+    [ObservableProperty]
     private bool _canUndo;
 
     [ObservableProperty]
@@ -66,8 +69,23 @@ public partial class MainWindowViewModel : ViewModelBase
     public AutoCompleteService AutoCompleteService => _autoCompleteService;
     public VimModeService? VimModeService => _vimModeService;
 
+    public Func<Task>? UndoRequested { get; set; }
+    public Func<Task>? RedoRequested { get; set; }
+    public Func<Task>? CutRequested { get; set; }
+    public Func<Task>? CopyRequested { get; set; }
+    public Func<Task>? PasteRequested { get; set; }
+    public Func<Task>? FindRequested { get; set; }
+    public Func<Task>? ReplaceRequested { get; set; }
+    public Func<Task>? SelectAllRequested { get; set; }
+    public Func<Task>? PrintRequested { get; set; }
+    public Func<Task>? ShowSettingsRequested { get; set; }
+    public Func<NotepadData, Task<bool>>? ConfirmCloseNotepadAsync { get; set; }
+    public Func<Task<bool>>? ConfirmExitAsync { get; set; }
+    public Func<string, string, Task<string?>>? ExportFilePathRequestedAsync { get; set; }
+
     public ObservableCollection<NotepadData> Notepads { get; }
     public ObservableCollection<TaskItem> FilteredTasks { get; }
+    public ObservableCollection<string> RecentFiles { get; }
 
     public MainWindowViewModel()
     {
@@ -82,6 +100,8 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         FilteredTasks = new ObservableCollection<TaskItem>();
+        RecentFiles = new ObservableCollection<string>(_settings.RecentFiles ?? Enumerable.Empty<string>());
+        RecentFiles.CollectionChanged += OnRecentFilesCollectionChanged;
 
         var selectedIndex = Math.Clamp(_settings.SelectedIndex, 0, Notepads.Count - 1);
         _currentNotepad = Notepads[selectedIndex];
@@ -95,17 +115,17 @@ public partial class MainWindowViewModel : ViewModelBase
         ZoomLevel = _settings.ZoomLevel;
         ShowStatusBar = _settings.ShowStatusBar;
         ShowTasksPanel = _settings.ShowTasksPanel;
+        AutoMarkdownEnabled = _settings.AutoMarkdownEnabled;
 
         UpdateCurrentTab();
         UpdateFilteredTasks();
+        AttachContentSubscriptions();
     }
 
     public void InitializeFileOperations(Window window)
     {
         _fileOperationsService = new FileOperationsService(window);
-        _fileOperationsService.FileOpened += path => _currentFilePath = path;
-        _fileOperationsService.FileSaved += path => _currentFilePath = path;
-        _fileOperationsService.RecentFilesUpdated += files => _settings.RecentFiles = files;
+        _fileOperationsService.RecentFilesUpdated += UpdateRecentFiles;
 
         var recentFilesPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Tascade", "recent_files.json");
         _fileOperationsService.LoadRecentFiles(recentFilesPath);
@@ -126,7 +146,10 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentTabTitle = value.Title;
         UpdateCurrentTab();
         UpdateFilteredTasks();
+        AttachContentSubscriptions();
     }
+
+    partial void OnCurrentViewModeChanged(ViewMode value) => MarkDirty();
 
     partial void OnCurrentTabTitleChanged(string value)
     {
@@ -180,6 +203,30 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    private void AttachContentSubscriptions()
+    {
+        foreach (var notepad in Notepads)
+        {
+            notepad.Content.PropertyChanged -= OnCurrentContentPropertyChanged;
+            notepad.Content.PropertyChanged += OnCurrentContentPropertyChanged;
+        }
+    }
+
+    private void OnCurrentContentPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender != CurrentNotepad.Content)
+        {
+            return;
+        }
+
+        if (e.PropertyName == nameof(RichTextContent.MarkdownContent)
+            || e.PropertyName == nameof(RichTextContent.PlainText)
+            || e.PropertyName == nameof(RichTextContent.HtmlContent))
+        {
+            MarkDirty();
+        }
+    }
+
     [RelayCommand]
     private void AddTask()
     {
@@ -230,41 +277,86 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var newNotepad = new NotepadData { Title = $"New Notepad {Notepads.Count + 1}", Content = new RichTextContent() };
         Notepads.Add(newNotepad);
+        newNotepad.Content.PropertyChanged += OnCurrentContentPropertyChanged;
         CurrentNotepad = newNotepad;
-        MarkDirty();
     }
 
     [RelayCommand]
-    private void CloseNotepad(NotepadData notepad)
+    private async Task CloseNotepad(NotepadData notepad)
     {
         if (Notepads.Count <= 1)
         {
             return;
         }
 
+        if (ConfirmCloseNotepadAsync != null && !await ConfirmCloseNotepadAsync(notepad))
+        {
+            return;
+        }
+
         var index = Notepads.IndexOf(notepad);
         Notepads.Remove(notepad);
+        notepad.Content.PropertyChanged -= OnCurrentContentPropertyChanged;
         if (CurrentNotepad == notepad)
         {
             CurrentNotepad = Notepads[Math.Clamp(index - 1, 0, Notepads.Count - 1)];
         }
 
-        MarkDirty();
+        SaveSettingsOnly();
     }
 
     [RelayCommand]
     private void SelectTab(NotepadData notepad) => CurrentNotepad = notepad;
 
     [RelayCommand]
+    private void BeginEditTask(TaskItem task)
+    {
+        foreach (var item in CurrentNotepad.Tasks)
+        {
+            if (!ReferenceEquals(item, task))
+            {
+                item.IsEditing = false;
+            }
+        }
+
+        task.IsEditing = true;
+    }
+
+    [RelayCommand]
+    private void CommitTaskEdit(TaskItem task)
+    {
+        var updatedText = task.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(updatedText))
+        {
+            DeleteTask(task);
+            return;
+        }
+
+        task.Text = updatedText;
+        task.IsEditing = false;
+        task.Updated = DateTime.Now;
+        UpdateFilteredTasks();
+        MarkDirty();
+    }
+
+    [RelayCommand]
+    private void CancelTaskEdit(TaskItem task)
+    {
+        task.IsEditing = false;
+        UpdateFilteredTasks();
+    }
+
+    [RelayCommand]
     private async Task Save()
     {
         if (_fileOperationsService == null)
         {
+            CurrentNotepad.IsDirty = false;
             SaveSettingsOnly();
             return;
         }
 
-        var path = _currentFilePath;
+        var path = CurrentNotepad.FilePath;
         if (string.IsNullOrWhiteSpace(path))
         {
             path = await _fileOperationsService.SaveFileDialogAsync($"{CurrentNotepad.Title}.md");
@@ -276,7 +368,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (await _fileOperationsService.SaveNotepadAsync(path, CurrentNotepad))
         {
-            _currentFilePath = path;
+            CurrentNotepad.FilePath = path;
+            CurrentNotepad.IsDirty = false;
             SaveSettingsOnly();
         }
     }
@@ -295,13 +388,49 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
+        var existing = Notepads.FirstOrDefault(n => !string.IsNullOrWhiteSpace(n.FilePath)
+            && string.Equals(n.FilePath, path, StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            CurrentNotepad = existing;
+            return;
+        }
+
         var notepad = await _fileOperationsService.LoadNotepadAsync(path);
         if (notepad != null)
         {
             Notepads.Add(notepad);
+            notepad.IsDirty = false;
+            notepad.Content.PropertyChanged += OnCurrentContentPropertyChanged;
             CurrentNotepad = notepad;
-            _currentFilePath = path;
-            MarkDirty();
+            SaveSettingsOnly();
+        }
+    }
+
+    [RelayCommand]
+    private async Task OpenRecentFile(string? path)
+    {
+        if (_fileOperationsService == null || string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return;
+        }
+
+        var existing = Notepads.FirstOrDefault(n => !string.IsNullOrWhiteSpace(n.FilePath)
+            && string.Equals(n.FilePath, path, StringComparison.OrdinalIgnoreCase));
+        if (existing != null)
+        {
+            CurrentNotepad = existing;
+            return;
+        }
+
+        var notepad = await _fileOperationsService.LoadNotepadAsync(path);
+        if (notepad != null)
+        {
+            Notepads.Add(notepad);
+            notepad.IsDirty = false;
+            notepad.Content.PropertyChanged += OnCurrentContentPropertyChanged;
+            CurrentNotepad = notepad;
+            SaveSettingsOnly();
         }
     }
 
@@ -316,22 +445,32 @@ public partial class MainWindowViewModel : ViewModelBase
         var path = await _fileOperationsService.SaveFileDialogAsync($"{CurrentNotepad.Title}.md");
         if (!string.IsNullOrWhiteSpace(path) && await _fileOperationsService.SaveNotepadAsync(path, CurrentNotepad))
         {
-            _currentFilePath = path;
-            MarkDirty();
+            CurrentNotepad.FilePath = path;
+            CurrentNotepad.IsDirty = false;
+            SaveSettingsOnly();
         }
     }
 
-    [RelayCommand] private void NewFile() { _currentFilePath = null; AddNewNotepad(); }
-    [RelayCommand] private void Print() { }
-    [RelayCommand] private void Exit() => SaveSettingsOnly();
-    [RelayCommand] private void Undo() { }
-    [RelayCommand] private void Redo() { }
-    [RelayCommand] private void Cut() { }
-    [RelayCommand] private void Copy() { }
-    [RelayCommand] private void Paste() { }
-    [RelayCommand] private void Find() { }
-    [RelayCommand] private void Replace() { }
-    [RelayCommand] private void SelectAll() { }
+    [RelayCommand] private void NewFile() { AddNewNotepad(); }
+    [RelayCommand] private async Task Print() { if (PrintRequested != null) await PrintRequested(); }
+    [RelayCommand]
+    private async Task Exit()
+    {
+        if (ConfirmExitAsync != null && !await ConfirmExitAsync())
+        {
+            return;
+        }
+
+        SaveSettingsOnly();
+    }
+    [RelayCommand] private async Task Undo() { if (UndoRequested != null) await UndoRequested(); }
+    [RelayCommand] private async Task Redo() { if (RedoRequested != null) await RedoRequested(); }
+    [RelayCommand] private async Task Cut() { if (CutRequested != null) await CutRequested(); }
+    [RelayCommand] private async Task Copy() { if (CopyRequested != null) await CopyRequested(); }
+    [RelayCommand] private async Task Paste() { if (PasteRequested != null) await PasteRequested(); }
+    [RelayCommand] private async Task Find() { if (FindRequested != null) await FindRequested(); }
+    [RelayCommand] private async Task Replace() { if (ReplaceRequested != null) await ReplaceRequested(); }
+    [RelayCommand] private async Task SelectAll() { if (SelectAllRequested != null) await SelectAllRequested(); }
 
     [RelayCommand]
     private void InsertDateTime()
@@ -342,6 +481,8 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand] private void ToggleWordWrap() { WordWrapEnabled = !WordWrapEnabled; MarkDirty(); }
+
+    [RelayCommand] private void ToggleAutoMarkdown() { AutoMarkdownEnabled = !AutoMarkdownEnabled; MarkDirty(); }
 
     [RelayCommand]
     private void SetViewMode(string mode)
@@ -358,29 +499,59 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand] private void ResetZoom() { ZoomLevel = 1.0; MarkDirty(); }
     [RelayCommand] private void ToggleTasksPanel() { ShowTasksPanel = !ShowTasksPanel; MarkDirty(); }
     [RelayCommand] private void ToggleStatusBar() { ShowStatusBar = !ShowStatusBar; MarkDirty(); }
-    [RelayCommand] private void ShowSettings() { }
+    [RelayCommand] private async Task ShowSettings() { if (ShowSettingsRequested != null) await ShowSettingsRequested(); }
 
     [RelayCommand]
-    private void ExportToText()
+    private async Task ExportToText()
     {
+        if (ExportFilePathRequestedAsync == null)
+        {
+            return;
+        }
+
         var fileName = $"Notepad_{CurrentNotepad.Title}_{DateTime.Now:yyyy-MM-dd_HHmm}.txt";
-        var filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
+        var filePath = await ExportFilePathRequestedAsync(fileName, "text");
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return;
+        }
+
         _storageService.ExportToText(CurrentNotepad, filePath);
     }
 
     [RelayCommand]
     private async Task ExportToMarkdown()
     {
+        if (ExportFilePathRequestedAsync == null)
+        {
+            return;
+        }
+
         var fileName = $"Notepad_{CurrentNotepad.Title}_{DateTime.Now:yyyy-MM-dd_HHmm}.md";
-        var filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
+        var filePath = await ExportFilePathRequestedAsync(fileName, "markdown");
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return;
+        }
+
         await File.WriteAllTextAsync(filePath, CurrentNotepad.Content.MarkdownContent);
     }
 
     [RelayCommand]
     private async Task ExportToHtml()
     {
+        if (ExportFilePathRequestedAsync == null)
+        {
+            return;
+        }
+
         var fileName = $"Notepad_{CurrentNotepad.Title}_{DateTime.Now:yyyy-MM-dd_HHmm}.html";
-        var filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
+        var filePath = await ExportFilePathRequestedAsync(fileName, "html");
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return;
+        }
+
         await File.WriteAllTextAsync(filePath, CurrentNotepad.Content.HtmlContent);
     }
 
@@ -394,6 +565,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void MarkDirty()
     {
+        CurrentNotepad.IsDirty = true;
         CurrentNotepad.LastSaved = DateTime.Now;
         if (AutoSave)
         {
@@ -413,6 +585,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _settings.ZoomLevel = ZoomLevel;
         _settings.ShowStatusBar = ShowStatusBar;
         _settings.ShowTasksPanel = ShowTasksPanel;
+        _settings.AutoMarkdownEnabled = AutoMarkdownEnabled;
+        _settings.RecentFiles = RecentFiles.ToList();
 
         _storageService.SaveSettings(_settings);
 
@@ -421,6 +595,20 @@ public partial class MainWindowViewModel : ViewModelBase
             var recentPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Tascade", "recent_files.json");
             _fileOperationsService.SaveRecentFiles(recentPath);
         }
+    }
+
+    private void UpdateRecentFiles(System.Collections.Generic.List<string> files)
+    {
+        RecentFiles.Clear();
+        foreach (var file in files)
+        {
+            RecentFiles.Add(file);
+        }
+    }
+
+    private void OnRecentFilesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        _settings.RecentFiles = RecentFiles.ToList();
     }
 }
 

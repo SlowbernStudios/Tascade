@@ -56,8 +56,7 @@ namespace Tascade.Services
                 return true;
             }
 
-            var previous = text[cursorPosition - 1];
-            return _settings.TriggerCharacters.Contains(previous);
+            return false;
         }
 
         public List<SuggestionItem> GetSuggestions(string seed)
@@ -71,9 +70,20 @@ namespace Tascade.Services
 
             var all = new List<SuggestionItem>();
 
+            if (seed.Length < _settings.MinWordLength)
+            {
+                return new List<SuggestionItem>();
+            }
+
+            if (_settings.EnableSnippetCompletion)
+            {
+                all.AddRange(GetSnippetSuggestions(seed));
+            }
+
             if (_settings.EnableWordCompletion)
             {
                 all.AddRange(_wordPool
+                    .Where(w => w.Length >= _settings.MinWordLength)
                     .Where(w => StartsWith(w, seed))
                     .OrderBy(w => w)
                     .Select(w => new SuggestionItem
@@ -85,7 +95,7 @@ namespace Tascade.Services
                     }));
             }
 
-            if (_settings.EnableCommandCompletion)
+            if (_settings.EnableCommandCompletion && seed.StartsWith(':'))
             {
                 all.AddRange(Commands
                     .Where(c => StartsWith(c, seed))
@@ -98,14 +108,9 @@ namespace Tascade.Services
                     }));
             }
 
-            if (_settings.EnableFilePathCompletion)
+            if (_settings.EnableFilePathCompletion && (seed.Contains('/') || seed.Contains('\\') || seed.Contains('.')))
             {
                 all.AddRange(GetFilePathSuggestions(seed));
-            }
-
-            if (_settings.EnableSnippetCompletion)
-            {
-                all.AddRange(GetSnippetSuggestions(seed));
             }
 
             return all
@@ -155,7 +160,11 @@ namespace Tascade.Services
             {
                 ("todo", "TODO: ", "Snippet"),
                 ("fixme", "FIXME: ", "Snippet"),
-                ("date", DateTime.Now.ToString("yyyy-MM-dd"), "Snippet")
+                ("date", DateTime.Now.ToString("yyyy-MM-dd"), "Snippet"),
+                ("note", "Note: ", "Snippet"),
+                ("idea", "Idea: ", "Snippet"),
+                ("next", "Next: ", "Snippet"),
+                ("done", "Done: ", "Snippet")
             };
 
             return snippets

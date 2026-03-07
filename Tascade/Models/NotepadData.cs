@@ -92,6 +92,8 @@ namespace Tascade.Models
         private string _title = "Main";
         private bool _isCurrent = false;
         private RichTextContent _content = new RichTextContent();
+        private string? _filePath;
+        private bool _isDirty;
 
         public string Title 
         { 
@@ -102,6 +104,7 @@ namespace Tascade.Models
                 {
                     _title = value;
                     OnPropertyChanged(nameof(Title));
+                    IsDirty = true;
                 }
             }
         }
@@ -113,6 +116,7 @@ namespace Tascade.Models
             set 
             {
                 Content.PlainText = value;
+                IsDirty = true;
             }
         }
         
@@ -125,6 +129,34 @@ namespace Tascade.Models
                 {
                     _content = value;
                     OnPropertyChanged(nameof(Content));
+                    IsDirty = true;
+                }
+            }
+        }
+
+        public string? FilePath
+        {
+            get => _filePath;
+            set
+            {
+                if (_filePath != value)
+                {
+                    _filePath = value;
+                    OnPropertyChanged(nameof(FilePath));
+                    IsDirty = true;
+                }
+            }
+        }
+        
+        public bool IsDirty
+        {
+            get => _isDirty;
+            set
+            {
+                if (_isDirty != value)
+                {
+                    _isDirty = value;
+                    OnPropertyChanged(nameof(IsDirty));
                 }
             }
         }

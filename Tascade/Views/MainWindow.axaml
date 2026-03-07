@@ -19,6 +19,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Toolbar -->
@@ -31,8 +32,14 @@
                     <MenuItem Header="Save" Command="{Binding SaveCommand}" HotKey="Ctrl+S"/>
                     <MenuItem Header="Save As" Command="{Binding SaveAsCommand}" HotKey="Ctrl+Shift+S"/>
                     <Separator/>
-                    <MenuItem Header="Recent Files">
-                        <!-- This will be populated dynamically from ViewModel -->
+                    <MenuItem Header="Recent Files" ItemsSource="{Binding RecentFiles}">
+                        <MenuItem.ItemTemplate>
+                            <DataTemplate>
+                                <MenuItem Header="{Binding .}"
+                                          Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).OpenRecentFileCommand}"
+                                          CommandParameter="{Binding .}"/>
+                            </DataTemplate>
+                        </MenuItem.ItemTemplate>
                     </MenuItem>
                     <Separator/>
                     <MenuItem Header="Print" Command="{Binding PrintCommand}" HotKey="Ctrl+P"/>
@@ -47,8 +54,8 @@
                 </MenuItem>
                 
                 <MenuItem Header="Edit">
-                    <MenuItem Header="Undo" Command="{Binding UndoCommand}" HotKey="Ctrl+Z"/>
-                    <MenuItem Header="Redo" Command="{Binding RedoCommand}" HotKey="Ctrl+Y"/>
+                    <MenuItem Header="Undo" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" HotKey="Ctrl+Z"/>
+                    <MenuItem Header="Redo" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" HotKey="Ctrl+Y"/>
                     <Separator/>
                     <MenuItem Header="Cut" Command="{Binding CutCommand}" HotKey="Ctrl+X"/>
                     <MenuItem Header="Copy" Command="{Binding CopyCommand}" HotKey="Ctrl+C"/>
@@ -65,6 +72,11 @@
                     <MenuItem Header="Word Wrap" Command="{Binding ToggleWordWrapCommand}">
                         <MenuItem.Icon>
                             <CheckBox IsChecked="{Binding WordWrapEnabled}" IsEnabled="False"/>
+                        </MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="Enable Auto-Markdown" Command="{Binding ToggleAutoMarkdownCommand}">
+                        <MenuItem.Icon>
+                            <CheckBox IsChecked="{Binding AutoMarkdownEnabled}" IsEnabled="False"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
@@ -108,7 +120,7 @@
         </Border>
 
         <!-- Main Content -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" Name="ContentGrid">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -203,10 +215,10 @@
             </Border>
 
             <!-- Splitter -->
-            <GridSplitter Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" HorizontalAlignment="Stretch"/>
+            <GridSplitter Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Name="TaskGridSplitter" HorizontalAlignment="Stretch"/>
 
             <!-- Tasks Section -->
-            <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Margin="0" BorderThickness="1">
+            <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Name="TasksPanelBorder" Margin="0" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -267,23 +279,53 @@
                                                       Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).ToggleTaskCommand}"
                                                       CommandParameter="{Binding}"
                                                       Margin="0,0,4,0"/>
-                                            <TextBlock Grid.Column="1" 
-                                                       Text="{Binding Text}" 
-                                                       VerticalAlignment="Center"
-                                                       FontSize="12"
-                                                       TextDecorations="{Binding Done, Converter={StaticResource BoolToStrikethroughConverter}}"/>
-                                            <Button Grid.Column="2" 
-                                                    Content="×" 
-                                                    Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).DeleteTaskCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Width="16" Height="16"
-                                                    Padding="0"
-                                                    FontSize="10"
-                                                    Margin="2,0,0,0"/>
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
+                                            <Grid Grid.Column="1">
+                                                <TextBlock Text="{Binding Text}" 
+                                                           VerticalAlignment="Center"
+                                                           FontSize="12"
+                                                           IsVisible="{Binding IsEditing, Converter={StaticResource InverseBoolConverter}}"
+                                                           TextDecorations="{Binding Done, Converter={StaticResource BoolToStrikethroughConverter}}"/>
+                                                <TextBox Text="{Binding Text, Mode=TwoWay}" 
+                                                         FontSize="12"
+                                                         IsVisible="{Binding IsEditing}"
+                                                         VerticalAlignment="Center">
+                                                    <TextBox.KeyBindings>
+                                                        <KeyBinding Gesture="Enter"
+                                                                    Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).CommitTaskEditCommand}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        <KeyBinding Gesture="Escape"
+                                                                    Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).CancelTaskEditCommand}"
+                                                                    CommandParameter="{Binding}"/>
+                                                    </TextBox.KeyBindings>
+                                                </TextBox>
+                                            </Grid>
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+                                                <Button Content="Edit"
+                                                        Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).BeginEditTaskCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        IsVisible="{Binding IsEditing, Converter={StaticResource InverseBoolConverter}}"
+                                                        Padding="4,0"
+                                                        FontSize="10"
+                                                        MinWidth="36"/>
+                                                <Button Content="Save"
+                                                        Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).CommitTaskEditCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        IsVisible="{Binding IsEditing}"
+                                                        Padding="4,0"
+                                                        FontSize="10"
+                                                        MinWidth="36"/>
+                                                <Button Content="×" 
+                                                        Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).DeleteTaskCommand}"
+                                                        CommandParameter="{Binding}"
+                                                        Width="16" Height="16"
+                                                        Padding="0"
+                                                        FontSize="10"
+                                                        Margin="2,0,0,0"/>
+                                            </StackPanel>
+                                         </Grid>
+                                     </Border>
+                                 </DataTemplate>
+                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
 
@@ -294,6 +336,19 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <Border Grid.Row="2"
+                Name="StatusBarBorder"
+                IsVisible="{Binding ShowStatusBar}"
+                Background="{StaticResource TangoDarkButtonBrush}"
+                BorderBrush="{StaticResource TangoDarkBorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="8,4">
+            <DockPanel LastChildFill="False">
+                <TextBlock DockPanel.Dock="Left" Text="{Binding CurrentTabTitle}" FontSize="11"/>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding CurrentNotepad.FilePath}" FontSize="11" Opacity="0.8"/>
+            </DockPanel>
+        </Border>
     </Grid>
 
 </Window>
