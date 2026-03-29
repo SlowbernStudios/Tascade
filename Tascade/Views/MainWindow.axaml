@@ -1,7 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Tascade.ViewModels"
-        xmlns:controls="using:Tascade.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
@@ -22,14 +21,11 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Toolbar -->
         <Border Grid.Row="0" Classes="toolbar" Padding="4,2">
             <Menu>
                 <MenuItem Header="File">
                     <MenuItem Header="New" Command="{Binding NewFileCommand}" HotKey="Ctrl+N"/>
                     <MenuItem Header="Open" Command="{Binding OpenFileCommand}" HotKey="Ctrl+O"/>
-                    <Separator/>
-                    <MenuItem Header="Save" Command="{Binding SaveCommand}" HotKey="Ctrl+S"/>
                     <MenuItem Header="Save As" Command="{Binding SaveAsCommand}" HotKey="Ctrl+Shift+S"/>
                     <Separator/>
                     <MenuItem Header="Recent Files" ItemsSource="{Binding RecentFiles}">
@@ -44,15 +40,9 @@
                     <Separator/>
                     <MenuItem Header="Print" Command="{Binding PrintCommand}" HotKey="Ctrl+P"/>
                     <Separator/>
-                    <MenuItem Header="Export">
-                        <MenuItem Header="Export as Text" Command="{Binding ExportToTextCommand}"/>
-                        <MenuItem Header="Export as Markdown" Command="{Binding ExportToMarkdownCommand}"/>
-                        <MenuItem Header="Export as HTML" Command="{Binding ExportToHtmlCommand}"/>
-                    </MenuItem>
-                    <Separator/>
                     <MenuItem Header="Exit" Command="{Binding ExitCommand}"/>
                 </MenuItem>
-                
+
                 <MenuItem Header="Edit">
                     <MenuItem Header="Undo" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" HotKey="Ctrl+Z"/>
                     <MenuItem Header="Redo" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" HotKey="Ctrl+Y"/>
@@ -67,32 +57,11 @@
                     <MenuItem Header="Select All" Command="{Binding SelectAllCommand}" HotKey="Ctrl+A"/>
                     <MenuItem Header="Time/Date" Command="{Binding InsertDateTimeCommand}" HotKey="F5"/>
                 </MenuItem>
-                
+
                 <MenuItem Header="View">
                     <MenuItem Header="Word Wrap" Command="{Binding ToggleWordWrapCommand}">
                         <MenuItem.Icon>
                             <CheckBox IsChecked="{Binding WordWrapEnabled}" IsEnabled="False"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
-                    <MenuItem Header="Enable Auto-Markdown" Command="{Binding ToggleAutoMarkdownCommand}">
-                        <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding AutoMarkdownEnabled}" IsEnabled="False"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
-                    <Separator/>
-                    <MenuItem Header="Plain Text Mode" Command="{Binding SetViewModeCommand}" CommandParameter="Plain">
-                        <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding CurrentViewMode, Converter={StaticResource ViewModeToBoolConverter}, ConverterParameter=Plain}" IsEnabled="False"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
-                    <MenuItem Header="Markdown Mode" Command="{Binding SetViewModeCommand}" CommandParameter="Markdown">
-                        <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding CurrentViewMode, Converter={StaticResource ViewModeToBoolConverter}, ConverterParameter=Markdown}" IsEnabled="False"/>
-                        </MenuItem.Icon>
-                    </MenuItem>
-                    <MenuItem Header="Split View" Command="{Binding SetViewModeCommand}" CommandParameter="Split">
-                        <MenuItem.Icon>
-                            <CheckBox IsChecked="{Binding CurrentViewMode, Converter={StaticResource ViewModeToBoolConverter}, ConverterParameter=Split}" IsEnabled="False"/>
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator/>
@@ -111,15 +80,13 @@
                         </MenuItem.Icon>
                     </MenuItem>
                 </MenuItem>
-                
+
                 <MenuItem Header="Options">
-                    <CheckBox Content="Auto Save" IsChecked="{Binding AutoSave}" FontSize="12"/>
                     <MenuItem Header="Settings" Command="{Binding ShowSettingsCommand}"/>
                 </MenuItem>
             </Menu>
         </Border>
 
-        <!-- Main Content -->
         <Grid Grid.Row="1" Name="ContentGrid">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -131,7 +98,6 @@
                 <ColumnDefinition Width="{Binding TasksWidth}" MinWidth="150"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Tab Bar -->
             <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource TangoDarkButtonBrush}" BorderBrush="{StaticResource TangoDarkBorderBrush}" BorderThickness="0,0,0,1">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <StackPanel Orientation="Horizontal">
@@ -143,10 +109,9 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="{Binding IsCurrent, Converter={StaticResource BoolToTabBackgroundConverter}}" 
+                                    <Border Background="{Binding IsCurrent, Converter={StaticResource BoolToTabBackgroundConverter}}"
                                             BorderBrush="{StaticResource TangoDarkBorderBrush}"
                                             BorderThickness="1,1,1,0"
-                                            Margin="0,0,0,0"
                                             Padding="8,4"
                                             Cursor="Hand">
                                         <Grid>
@@ -154,8 +119,8 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" 
-                                                    Content="{Binding Title}" 
+                                            <Button Grid.Column="0"
+                                                    Content="{Binding Title}"
                                                     Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).SelectTabCommand}"
                                                     CommandParameter="{Binding}"
                                                     Background="Transparent"
@@ -164,7 +129,7 @@
                                                     FontSize="12"
                                                     VerticalAlignment="Center"
                                                     HorizontalAlignment="Left"/>
-                                            <Button Grid.Column="1" Content="×" 
+                                            <Button Grid.Column="1" Content="×"
                                                     Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).CloseNotepadCommand}"
                                                     CommandParameter="{Binding}"
                                                     Width="12" Height="12"
@@ -178,9 +143,9 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Content="+" 
-                                Command="{Binding AddNewNotepadCommand}" 
-                                Width="20" Height="20" 
+                        <Button Content="+"
+                                Command="{Binding AddNewNotepadCommand}"
+                                Width="20" Height="20"
                                 Padding="0"
                                 FontSize="10"
                                 Background="{StaticResource TangoDarkButtonBrush}"
@@ -191,7 +156,6 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- Notes Section -->
             <Border Grid.Row="1" Grid.Column="0" Margin="0" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -210,14 +174,19 @@
                                  FontSize="11"
                                  Padding="4,2"/>
                     </Grid>
-                    <controls:MarkdownEditor Grid.Row="1" Name="MarkdownEditor"/>
+                    <TextBox Grid.Row="1"
+                             Name="EditorTextBox"
+                             Text="{Binding CurrentNotepad.Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True"
+                             AcceptsTab="True"
+                             TextWrapping="Wrap"
+                             Margin="4"
+                             FontSize="14"/>
                 </Grid>
             </Border>
 
-            <!-- Splitter -->
             <GridSplitter Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Name="TaskGridSplitter" HorizontalAlignment="Stretch"/>
 
-            <!-- Tasks Section -->
             <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Name="TasksPanelBorder" Margin="0" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -227,42 +196,40 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Add Task -->
                     <Grid Grid.Row="0" Margin="2,2,2,4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Name="AddTaskTextBox" Text="{Binding NewTaskText}" 
+                        <TextBox Grid.Column="0" Name="AddTaskTextBox" Text="{Binding NewTaskText}"
                                  Watermark="Add new task..."
                                  BorderThickness="1"
                                  Padding="2"
                                  FontSize="12"/>
-                        <Button Grid.Column="1" Content="Add" 
+                        <Button Grid.Column="1" Content="Add"
                                 Command="{Binding AddTaskCommand}"
                                 Margin="2,0,0,0"
                                 Padding="6,2"
                                 FontSize="12"/>
                     </Grid>
 
-                    <!-- Search and Filter -->
                     <Grid Grid.Row="1" Margin="2,0,2,4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding SearchText}" 
+                        <TextBox Grid.Column="0" Text="{Binding SearchText}"
                                  Watermark="Search tasks..."
                                  BorderThickness="1"
                                  Padding="2"
                                  FontSize="12"/>
-                        <CheckBox Grid.Column="1" Content="Show Done" 
+                        <CheckBox Grid.Column="1" Content="Show Done"
                                   IsChecked="{Binding ShowCompleted}"
-                                  Margin="6,0,0,0"
+                                  Margin="8,0,0,0"
+                                  VerticalAlignment="Center"
                                   FontSize="12"/>
                     </Grid>
 
-                    <!-- Tasks List -->
                     <ScrollViewer Grid.Row="2" Margin="2">
                         <ItemsControl ItemsSource="{Binding FilteredTasks}">
                             <ItemsControl.ItemTemplate>
@@ -274,18 +241,18 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <CheckBox Grid.Column="0" 
+                                            <CheckBox Grid.Column="0"
                                                       IsChecked="{Binding Done, Mode=OneWay}"
                                                       Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).ToggleTaskCommand}"
                                                       CommandParameter="{Binding}"
                                                       Margin="0,0,4,0"/>
                                             <Grid Grid.Column="1">
-                                                <TextBlock Text="{Binding Text}" 
+                                                <TextBlock Text="{Binding Text}"
                                                            VerticalAlignment="Center"
                                                            FontSize="12"
                                                            IsVisible="{Binding IsEditing, Converter={StaticResource InverseBoolConverter}}"
                                                            TextDecorations="{Binding Done, Converter={StaticResource BoolToStrikethroughConverter}}"/>
-                                                <TextBox Text="{Binding Text, Mode=TwoWay}" 
+                                                <TextBox Text="{Binding Text, Mode=TwoWay}"
                                                          FontSize="12"
                                                          IsVisible="{Binding IsEditing}"
                                                          VerticalAlignment="Center">
@@ -314,7 +281,7 @@
                                                         Padding="4,0"
                                                         FontSize="10"
                                                         MinWidth="36"/>
-                                                <Button Content="×" 
+                                                <Button Content="×"
                                                         Command="{Binding #RootWindow.((vm:MainWindowViewModel)DataContext).DeleteTaskCommand}"
                                                         CommandParameter="{Binding}"
                                                         Width="16" Height="16"
@@ -322,14 +289,13 @@
                                                         FontSize="10"
                                                         Margin="2,0,0,0"/>
                                             </StackPanel>
-                                         </Grid>
-                                     </Border>
-                                 </DataTemplate>
-                             </ItemsControl.ItemTemplate>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
 
-                    <!-- Task Actions -->
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="2,4,2,2" Spacing="4">
                         <Button Content="Clear Done" Command="{Binding ClearCompletedTasksCommand}" Padding="6,2" FontSize="12"/>
                     </StackPanel>
@@ -352,5 +318,3 @@
     </Grid>
 
 </Window>
-
-

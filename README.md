@@ -1,18 +1,17 @@
 # Tascade
 
-Tascade is a cross-platform desktop notes app with integrated task tracking, markdown editing, and an autosave-first workflow.
+Tascade is a cross-platform desktop notes app with integrated task tracking and an autosave-first local workflow.
 
 ## Features
 
 - Notes + tasks split layout
 - Multiple notepad tabs
 - Rename current tab inline
-- Markdown editor with `Editor`, `Preview`, and `Split` modes
-- Auto-switch to `Split` when markdown syntax is detected
-- Task list: add, complete, delete, clear completed, and filter
-- `Enter` to add a task
-- Open / Save / Save As
-- Export to TXT / Markdown / HTML
+- Plain text editor with word wrap, zoom, undo/redo, find, and replace
+- Continuous autosave to local workspace state
+- Open existing text files and bind a note to disk with `Save As`
+- Task list: add, complete, edit, delete, clear completed, and filter
+- `Enter` adds a task quickly
 - Bundled JetBrains Mono font (no system install required)
 
 ## Download
@@ -92,6 +91,8 @@ git push origin v1.0.0
 - `%APPDATA%/Tascade/settings.json`
 - `%APPDATA%/Tascade/recent_files.json`
 
+Opened files are treated as live local documents. Once a file is opened or assigned with `Save As`, edits are autosaved back to that file automatically.
+
 ## Contributing And Policies
 
 - Contributing guide: `CONTRIBUTING.md`
@@ -101,4 +102,3 @@ git push origin v1.0.0
 ## License
 
 MIT. See `LICENSE`.
-

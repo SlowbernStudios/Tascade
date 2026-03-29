@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using Tascade.Models;
@@ -32,7 +31,10 @@ namespace Tascade.Services
                 }
 
                 var json = File.ReadAllText(_settingsFilePath);
-                var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                var settings = JsonSerializer.Deserialize<AppSettings>(json, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
                 
                 // Ensure at least one notepad exists
                 if (settings?.Notepads == null || settings.Notepads.Count == 0)
@@ -57,8 +59,8 @@ namespace Tascade.Services
         {
             try
             {
-                var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions 
-                { 
+                var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
+                {
                     WriteIndented = true 
                 });
                 File.WriteAllText(_settingsFilePath, json);
@@ -66,34 +68,6 @@ namespace Tascade.Services
             catch (Exception)
             {
                 // Handle save errors silently for now
-            }
-        }
-
-        public void ExportToText(NotepadData notepad, string filePath)
-        {
-            try
-            {
-                var lines = new List<string>
-                {
-                    $"Notepad: {notepad.Title}",
-                    $"Exported: {DateTime.Now}",
-                    "",
-                    "Notes:",
-                    notepad.FreeformNotes,
-                    "",
-                    "Tasks:"
-                };
-
-                foreach (var task in notepad.Tasks)
-                {
-                    lines.Add($"[{(task.Done ? "x" : " ")}] {task.Text}");
-                }
-
-                File.WriteAllLines(filePath, lines);
-            }
-            catch (Exception)
-            {
-                // Handle export errors
             }
         }
     }

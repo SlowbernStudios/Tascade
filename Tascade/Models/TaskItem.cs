@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Text.Json.Serialization;
 
 namespace Tascade.Models
 {
@@ -35,6 +36,7 @@ namespace Tascade.Models
             }
         }
 
+        [JsonIgnore]
         public bool IsEditing
         {
             get => _isEditing;

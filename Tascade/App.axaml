@@ -14,8 +14,6 @@
         <converters:BoolToStrikethroughConverter x:Key="BoolToStrikethroughConverter"/>
         <converters:BoolToTabBackgroundConverter x:Key="BoolToTabBackgroundConverter"/>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
-        <converters:ViewModeToBoolConverter x:Key="ViewModeToBoolConverter"/>
-        <converters:SuggestionTypeToColorConverter x:Key="SuggestionTypeToColorConverter"/>
         <FontFamily x:Key="AppMonoFont">avares://Tascade/Assets/Fonts/static#JetBrains Mono</FontFamily>
         
         <!-- Tango Dark Color Palette -->
@@ -151,5 +149,4 @@
         </Style>
     </Application.Styles>
 </Application>
-
 

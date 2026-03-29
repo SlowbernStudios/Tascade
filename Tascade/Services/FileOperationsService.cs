@@ -31,10 +31,14 @@ namespace Tascade.Services
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("Text/Markdown")
+                    new FilePickerFileType("Text")
                     {
-                        Patterns = new[] { "*.txt", "*.md", "*.markdown", "*.html" }
-                    }
+                        Patterns = new[] { "*.txt", "*.text" }
+                    },
+                    new FilePickerFileType("All Files")
+                    {
+                        Patterns = new[] { "*" }
+                    },
                 }
             });
 
@@ -48,8 +52,7 @@ namespace Tascade.Services
                 SuggestedFileName = defaultFileName,
                 FileTypeChoices = new[]
                 {
-                    new FilePickerFileType("Text") { Patterns = new[] { "*.txt" } },
-                    new FilePickerFileType("Markdown") { Patterns = new[] { "*.md" } }
+                    new FilePickerFileType("Text") { Patterns = new[] { "*.txt" } }
                 }
             });
 
@@ -64,7 +67,7 @@ namespace Tascade.Services
                 var notepad = new NotepadData
                 {
                     Title = Path.GetFileNameWithoutExtension(filePath),
-                    Content = new RichTextContent { MarkdownContent = content },
+                    Text = content,
                     FilePath = filePath
                 };
 
@@ -82,7 +85,22 @@ namespace Tascade.Services
         {
             try
             {
-                await File.WriteAllTextAsync(filePath, notepad.Content.MarkdownContent ?? string.Empty);
+                await File.WriteAllTextAsync(filePath, notepad.Text ?? string.Empty);
+                AddRecent(filePath);
+                FileSaved?.Invoke(filePath);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> SaveTextAsync(string filePath, string text)
+        {
+            try
+            {
+                await File.WriteAllTextAsync(filePath, text ?? string.Empty);
                 AddRecent(filePath);
                 FileSaved?.Invoke(filePath);
                 return true;
@@ -149,5 +167,4 @@ namespace Tascade.Services
         }
     }
 }
-
 

@@ -4,10 +4,9 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
-using CommunityToolkit.Mvvm.Input;
-using Tascade.Controls;
 using Tascade.Models;
 using Tascade.ViewModels;
 
@@ -15,7 +14,7 @@ namespace Tascade.Views;
 
 public partial class MainWindow : Window
 {
-    private MarkdownEditor? _markdownEditor;
+    private TextBox? _editorTextBox;
     private TextBox? _addTaskTextBox;
     private MainWindowViewModel? _subscribedViewModel;
     private Grid? _contentGrid;
@@ -27,19 +26,26 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        _markdownEditor = this.FindControl<MarkdownEditor>("MarkdownEditor");
+        _editorTextBox = this.FindControl<TextBox>("EditorTextBox");
         _addTaskTextBox = this.FindControl<TextBox>("AddTaskTextBox");
         _contentGrid = this.FindControl<Grid>("ContentGrid");
         _taskGridSplitter = this.FindControl<GridSplitter>("TaskGridSplitter");
         _tasksPanelBorder = this.FindControl<Border>("TasksPanelBorder");
+
         if (_addTaskTextBox != null)
         {
             _addTaskTextBox.KeyDown += OnAddTaskTextBoxKeyDown;
         }
 
-        if (_markdownEditor != null)
+        if (_editorTextBox != null)
         {
-            _markdownEditor.HistoryStateChanged += OnEditorHistoryStateChanged;
+            _editorTextBox.TextChanged += OnEditorStateChanged;
+            _editorTextBox.KeyUp += OnEditorStateChanged;
+        }
+
+        if (_taskGridSplitter != null)
+        {
+            _taskGridSplitter.PointerReleased += OnTaskGridSplitterPointerReleased;
         }
 
         DataContextChanged += OnDataContextChanged;
@@ -57,6 +63,7 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.InitializeFileOperations(this);
+            ApplyEditorPresentation(viewModel);
         }
     }
 
@@ -73,144 +80,126 @@ public partial class MainWindow : Window
         }
 
         e.Cancel = true;
-        if (await ConfirmExitAsync())
-        {
-            _allowClose = true;
-            Close();
-        }
+        await viewModel.FlushPendingChangesAsync();
+        _allowClose = true;
+        Close();
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
-    {
-        if (DataContext is MainWindowViewModel viewModel && _markdownEditor != null)
-        {
-            if (!ReferenceEquals(_subscribedViewModel, viewModel))
-            {
-                _subscribedViewModel = viewModel;
-                WireViewModelCallbacks(viewModel);
-                viewModel.PropertyChanged += (s, args) =>
-                {
-                    if (_markdownEditor == null)
-                    {
-                        return;
-                    }
-
-                    if (args.PropertyName == nameof(viewModel.CurrentNotepad))
-                    {
-                        _markdownEditor.Content = viewModel.CurrentNotepad.Content;
-                    }
-
-                    if (args.PropertyName == nameof(viewModel.AutoMarkdownEnabled))
-                    {
-                        _markdownEditor.AutoMarkdownEnabled = viewModel.AutoMarkdownEnabled;
-                    }
-
-                    if (args.PropertyName == nameof(viewModel.CurrentViewMode))
-                    {
-                        _markdownEditor.ViewMode = viewModel.CurrentViewMode;
-                    }
-
-                    if (args.PropertyName == nameof(viewModel.AutoCompleteService))
-                    {
-                        _markdownEditor.AutoCompleteService = viewModel.AutoCompleteService;
-                    }
-
-                    if (args.PropertyName == nameof(viewModel.WordWrapEnabled))
-                    {
-                        _markdownEditor.WordWrapEnabled = viewModel.WordWrapEnabled;
-                    }
-
-                    if (args.PropertyName == nameof(viewModel.ZoomLevel))
-                    {
-                        _markdownEditor.ZoomLevel = viewModel.ZoomLevel;
-                    }
-
-                    if (args.PropertyName == nameof(viewModel.ShowTasksPanel))
-                    {
-                        ApplyTasksPanelVisibility(viewModel.ShowTasksPanel, viewModel.TasksWidth);
-                    }
-                };
-            }
-
-            _markdownEditor.Content = viewModel.CurrentNotepad.Content;
-            _markdownEditor.AutoMarkdownEnabled = viewModel.AutoMarkdownEnabled;
-            _markdownEditor.ViewMode = viewModel.CurrentViewMode;
-            _markdownEditor.AutoCompleteService = viewModel.AutoCompleteService;
-            _markdownEditor.WordWrapEnabled = viewModel.WordWrapEnabled;
-            _markdownEditor.ZoomLevel = viewModel.ZoomLevel;
-            viewModel.CanUndo = _markdownEditor.CanUndo;
-            viewModel.CanRedo = _markdownEditor.CanRedo;
-            ApplyTasksPanelVisibility(viewModel.ShowTasksPanel, viewModel.TasksWidth);
-        }
-    }
-
-    private void OnEditorHistoryStateChanged(bool canUndo, bool canRedo)
     {
         if (DataContext is not MainWindowViewModel viewModel)
         {
             return;
         }
 
-        viewModel.CanUndo = canUndo;
-        viewModel.CanRedo = canRedo;
+        if (!ReferenceEquals(_subscribedViewModel, viewModel))
+        {
+            _subscribedViewModel = viewModel;
+            WireViewModelCallbacks(viewModel);
+            viewModel.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName is nameof(viewModel.WordWrapEnabled) or nameof(viewModel.ZoomLevel))
+                {
+                    ApplyEditorPresentation(viewModel);
+                }
+
+                if (args.PropertyName == nameof(viewModel.ShowTasksPanel))
+                {
+                    ApplyTasksPanelVisibility(viewModel.ShowTasksPanel, viewModel.TasksWidth);
+                }
+
+                if (args.PropertyName == nameof(viewModel.TasksWidth))
+                {
+                    ApplyTasksPanelVisibility(viewModel.ShowTasksPanel, viewModel.TasksWidth);
+                }
+            };
+        }
+
+        viewModel.CanUndo = _editorTextBox?.CanUndo ?? false;
+        viewModel.CanRedo = _editorTextBox?.CanRedo ?? false;
+        ApplyEditorPresentation(viewModel);
+        ApplyTasksPanelVisibility(viewModel.ShowTasksPanel, viewModel.TasksWidth);
     }
 
     private void WireViewModelCallbacks(MainWindowViewModel viewModel)
     {
         viewModel.UndoRequested = () =>
         {
-            _markdownEditor?.Undo();
+            _editorTextBox?.Undo();
             return Task.CompletedTask;
         };
         viewModel.RedoRequested = () =>
         {
-            _markdownEditor?.Redo();
+            _editorTextBox?.Redo();
             return Task.CompletedTask;
         };
-        viewModel.CutRequested = () => _markdownEditor?.CutSelectionAsync() ?? Task.CompletedTask;
-        viewModel.CopyRequested = () => _markdownEditor?.CopySelectionAsync() ?? Task.CompletedTask;
-        viewModel.PasteRequested = () => _markdownEditor?.PasteAsync() ?? Task.CompletedTask;
+        viewModel.CutRequested = async () =>
+        {
+            if (_editorTextBox != null)
+            {
+                await CopySelectionToClipboardAsync();
+                ReplaceRange(_editorTextBox.SelectionStart, _editorTextBox.SelectionEnd - _editorTextBox.SelectionStart, string.Empty);
+            }
+        };
+        viewModel.CopyRequested = async () =>
+        {
+            await CopySelectionToClipboardAsync();
+        };
+        viewModel.PasteRequested = async () =>
+        {
+            if (_editorTextBox == null)
+            {
+                return;
+            }
+
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard == null)
+            {
+                return;
+            }
+
+            var text = await ClipboardExtensions.TryGetTextAsync(clipboard);
+            if (!string.IsNullOrEmpty(text))
+            {
+                ReplaceRange(_editorTextBox.SelectionStart, _editorTextBox.SelectionEnd - _editorTextBox.SelectionStart, text);
+            }
+        };
         viewModel.SelectAllRequested = () =>
         {
-            _markdownEditor?.SelectAllText();
+            _editorTextBox?.SelectAll();
             return Task.CompletedTask;
         };
         viewModel.FindRequested = ShowFindDialogAsync;
         viewModel.ReplaceRequested = ShowReplaceDialogAsync;
         viewModel.PrintRequested = ShowPrintPreviewAsync;
         viewModel.ShowSettingsRequested = ShowSettingsDialogAsync;
-        viewModel.ConfirmCloseNotepadAsync = ConfirmCloseNotepadAsync;
-        viewModel.ConfirmExitAsync = ConfirmExitAsync;
-        viewModel.ExportFilePathRequestedAsync = RequestExportFilePathAsync;
     }
 
-    private async Task<string?> RequestExportFilePathAsync(string suggestedFileName, string format)
+    private void ApplyEditorPresentation(MainWindowViewModel viewModel)
     {
-        if (DataContext is not MainWindowViewModel)
+        if (_editorTextBox == null)
         {
-            return null;
+            return;
         }
 
-        var fileType = format.ToLowerInvariant() switch
-        {
-            "html" => "html",
-            "text" => "txt",
-            _ => "md"
-        };
+        _editorTextBox.TextWrapping = viewModel.WordWrapEnabled ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap;
+        _editorTextBox.FontSize = Math.Max(8, 14 * viewModel.ZoomLevel);
+    }
 
-        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
-        {
-            SuggestedFileName = suggestedFileName,
-            FileTypeChoices = new[]
-            {
-                new Avalonia.Platform.Storage.FilePickerFileType(format)
-                {
-                    Patterns = new[] { $"*.{fileType}" }
-                }
-            }
-        });
+    private void OnEditorStateChanged(object? sender, EventArgs e)
+    {
+        UpdateEditorHistoryState();
+    }
 
-        return file?.Path.LocalPath;
+    private void UpdateEditorHistoryState()
+    {
+        if (DataContext is not MainWindowViewModel viewModel)
+        {
+            return;
+        }
+
+        viewModel.CanUndo = _editorTextBox?.CanUndo ?? false;
+        viewModel.CanRedo = _editorTextBox?.CanRedo ?? false;
     }
 
     private void ApplyTasksPanelVisibility(bool isVisible, double savedWidth)
@@ -228,9 +217,32 @@ public partial class MainWindow : Window
         tasksColumn.Width = isVisible ? new GridLength(Math.Max(150, savedWidth), GridUnitType.Pixel) : new GridLength(0);
     }
 
+    private void OnTaskGridSplitterPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        SyncTasksWidthFromLayout();
+    }
+
+    private void SyncTasksWidthFromLayout()
+    {
+        if (DataContext is not MainWindowViewModel viewModel || _contentGrid == null || _contentGrid.ColumnDefinitions.Count < 3)
+        {
+            return;
+        }
+
+        var width = _contentGrid.ColumnDefinitions[2].Width;
+        if (width.GridUnitType == GridUnitType.Pixel && width.Value >= 150)
+        {
+            var normalized = (float)Math.Round(width.Value, 2);
+            if (Math.Abs(viewModel.TasksWidth - normalized) > 0.01f)
+            {
+                viewModel.TasksWidth = normalized;
+            }
+        }
+    }
+
     private async Task ShowFindDialogAsync()
     {
-        if (_markdownEditor == null)
+        if (_editorTextBox == null)
         {
             return;
         }
@@ -242,13 +254,13 @@ public partial class MainWindow : Window
         panel.Children.Add(searchBox);
         panel.Children.Add(matchCaseBox);
 
-        var result = await ShowDialogAsync("Find", "Search within the current notepad.", panel, "Find Next", null, "Cancel");
+        var result = await ShowDialogAsync("Find", "Search within the current note.", panel, "Find Next", null, "Cancel");
         if (result != DialogResult.Primary || string.IsNullOrWhiteSpace(searchBox.Text))
         {
             return;
         }
 
-        if (!_markdownEditor.FindNext(searchBox.Text, matchCaseBox.IsChecked == true))
+        if (!FindNext(searchBox.Text, matchCaseBox.IsChecked == true))
         {
             await ShowInfoDialogAsync($"No match found for '{searchBox.Text}'.");
         }
@@ -256,7 +268,7 @@ public partial class MainWindow : Window
 
     private async Task ShowReplaceDialogAsync()
     {
-        if (_markdownEditor == null)
+        if (_editorTextBox == null)
         {
             return;
         }
@@ -271,7 +283,7 @@ public partial class MainWindow : Window
         panel.Children.Add(replacementBox);
         panel.Children.Add(matchCaseBox);
 
-        var result = await ShowDialogAsync("Replace", "Replace within the current notepad.", panel, "Replace", "Replace All", "Cancel");
+        var result = await ShowDialogAsync("Replace", "Replace within the current note.", panel, "Replace", "Replace All", "Cancel");
         if (result == DialogResult.Cancel || string.IsNullOrWhiteSpace(searchBox.Text))
         {
             return;
@@ -280,14 +292,14 @@ public partial class MainWindow : Window
         var matchCase = matchCaseBox.IsChecked == true;
         if (result == DialogResult.Secondary)
         {
-            var replacements = _markdownEditor.ReplaceAll(searchBox.Text, replacementBox.Text ?? string.Empty, matchCase);
+            var replacements = ReplaceAll(searchBox.Text, replacementBox.Text ?? string.Empty, matchCase);
             await ShowInfoDialogAsync(replacements > 0
                 ? $"Replaced {replacements} occurrence(s)."
                 : $"No match found for '{searchBox.Text}'.");
             return;
         }
 
-        if (!_markdownEditor.ReplaceCurrentSelection(searchBox.Text, replacementBox.Text ?? string.Empty, matchCase))
+        if (!ReplaceCurrentSelection(searchBox.Text, replacementBox.Text ?? string.Empty, matchCase))
         {
             await ShowInfoDialogAsync($"No match found for '{searchBox.Text}'.");
         }
@@ -320,18 +332,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        var autoSaveBox = new CheckBox { Content = "Auto Save", IsChecked = viewModel.AutoSave };
         var showCompletedBox = new CheckBox { Content = "Show Completed Tasks", IsChecked = viewModel.ShowCompleted };
         var wordWrapBox = new CheckBox { Content = "Word Wrap", IsChecked = viewModel.WordWrapEnabled };
-        var autoMarkdownBox = new CheckBox { Content = "Auto Markdown", IsChecked = viewModel.AutoMarkdownEnabled };
         var statusBarBox = new CheckBox { Content = "Show Status Bar", IsChecked = viewModel.ShowStatusBar };
         var tasksPanelBox = new CheckBox { Content = "Show Tasks Panel", IsChecked = viewModel.ShowTasksPanel };
 
         var panel = new StackPanel { Spacing = 8 };
-        panel.Children.Add(autoSaveBox);
         panel.Children.Add(showCompletedBox);
         panel.Children.Add(wordWrapBox);
-        panel.Children.Add(autoMarkdownBox);
         panel.Children.Add(statusBarBox);
         panel.Children.Add(tasksPanelBox);
 
@@ -341,17 +349,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        viewModel.AutoSave = autoSaveBox.IsChecked == true;
         viewModel.ShowCompleted = showCompletedBox.IsChecked == true;
         viewModel.WordWrapEnabled = wordWrapBox.IsChecked == true;
-        viewModel.AutoMarkdownEnabled = autoMarkdownBox.IsChecked == true;
         viewModel.ShowStatusBar = statusBarBox.IsChecked == true;
         viewModel.ShowTasksPanel = tasksPanelBox.IsChecked == true;
     }
 
     private static string BuildPrintPreview(NotepadData notepad)
     {
-        var notes = notepad.Content.PlainText ?? string.Empty;
+        var notes = notepad.Text ?? string.Empty;
         var tasks = notepad.Tasks.Count == 0
             ? "(No tasks)"
             : string.Join(Environment.NewLine, notepad.Tasks.Select(t => $"[{(t.Done ? 'x' : ' ')}] {t.Text}"));
@@ -359,90 +365,126 @@ public partial class MainWindow : Window
         return $"{notepad.Title}{Environment.NewLine}{Environment.NewLine}Notes:{Environment.NewLine}{notes}{Environment.NewLine}{Environment.NewLine}Tasks:{Environment.NewLine}{tasks}";
     }
 
-    private async Task<bool> ConfirmCloseNotepadAsync(NotepadData notepad)
+    private bool FindNext(string searchText, bool matchCase)
     {
-        if (!notepad.IsDirty || DataContext is not MainWindowViewModel viewModel)
-        {
-            return true;
-        }
-
-        var decision = await ShowUnsavedChangesDialogAsync(notepad.Title);
-        if (decision == UnsavedChangesDecision.Cancel)
+        if (_editorTextBox == null || string.IsNullOrEmpty(_editorTextBox.Text) || string.IsNullOrEmpty(searchText))
         {
             return false;
         }
 
-        if (decision == UnsavedChangesDecision.Save)
+        var text = _editorTextBox.Text;
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var selectionEnd = Math.Max(_editorTextBox.SelectionEnd, _editorTextBox.CaretIndex);
+        var startIndex = Math.Clamp(selectionEnd, 0, text.Length);
+        var index = text.IndexOf(searchText, startIndex, comparison);
+        if (index < 0 && startIndex > 0)
         {
-            var previous = viewModel.CurrentNotepad;
-            if (!ReferenceEquals(previous, notepad))
-            {
-                viewModel.CurrentNotepad = notepad;
-            }
-
-            if (viewModel.SaveCommand is IAsyncRelayCommand asyncCommand)
-            {
-                await asyncCommand.ExecuteAsync(null);
-            }
-            else
-            {
-                viewModel.SaveCommand.Execute(null);
-            }
-
-            if (!ReferenceEquals(previous, notepad))
-            {
-                viewModel.CurrentNotepad = previous;
-            }
-
-            return !notepad.IsDirty;
+            index = text.IndexOf(searchText, 0, comparison);
         }
 
+        if (index < 0)
+        {
+            return false;
+        }
+
+        _editorTextBox.Focus();
+        _editorTextBox.SelectionStart = index;
+        _editorTextBox.SelectionEnd = index + searchText.Length;
+        _editorTextBox.CaretIndex = index + searchText.Length;
         return true;
     }
 
-    private async Task<bool> ConfirmExitAsync()
+    private bool ReplaceCurrentSelection(string searchText, string replacement, bool matchCase)
     {
-        if (DataContext is not MainWindowViewModel viewModel)
+        if (_editorTextBox == null || string.IsNullOrEmpty(searchText))
         {
-            return true;
+            return false;
         }
 
-        foreach (var notepad in viewModel.Notepads)
+        var selectedText = _editorTextBox.SelectedText ?? string.Empty;
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        if (!string.Equals(selectedText, searchText, comparison))
         {
-            if (!await ConfirmCloseNotepadAsync(notepad))
+            if (!FindNext(searchText, matchCase))
             {
                 return false;
             }
         }
 
+        var start = _editorTextBox.SelectionStart;
+        var length = Math.Max(0, _editorTextBox.SelectionEnd - _editorTextBox.SelectionStart);
+        ReplaceRange(start, length, replacement);
+        _editorTextBox.SelectionStart = start;
+        _editorTextBox.SelectionEnd = start + replacement.Length;
         return true;
     }
 
-    private async Task<string?> ShowTextInputDialogAsync(string title, string prompt)
+    private int ReplaceAll(string searchText, string replacement, bool matchCase)
     {
-        var input = new TextBox
+        if (_editorTextBox == null || string.IsNullOrEmpty(_editorTextBox.Text) || string.IsNullOrEmpty(searchText))
         {
-            Width = 320
-        };
+            return 0;
+        }
 
-        var result = await ShowDialogAsync(title, prompt, input, "OK", "Cancel");
-        return result == DialogResult.Primary ? input.Text : null;
+        var comparison = matchCase ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        var current = _editorTextBox.Text;
+        var count = 0;
+        var startIndex = 0;
+
+        while (startIndex <= current.Length)
+        {
+            var index = current.IndexOf(searchText, startIndex, comparison);
+            if (index < 0)
+            {
+                break;
+            }
+
+            current = current[..index] + replacement + current[(index + searchText.Length)..];
+            startIndex = index + replacement.Length;
+            count++;
+        }
+
+        if (count > 0)
+        {
+            _editorTextBox.Text = current;
+            _editorTextBox.CaretIndex = Math.Min(current.Length, startIndex);
+        }
+
+        return count;
+    }
+
+    private void ReplaceRange(int start, int length, string replacement)
+    {
+        if (_editorTextBox == null)
+        {
+            return;
+        }
+
+        var current = _editorTextBox.Text ?? string.Empty;
+        start = Math.Clamp(start, 0, current.Length);
+        var end = Math.Min(current.Length, start + Math.Max(0, length));
+        _editorTextBox.Text = current[..start] + replacement + current[end..];
+        _editorTextBox.CaretIndex = start + replacement.Length;
+        UpdateEditorHistoryState();
+    }
+
+    private async Task CopySelectionToClipboardAsync()
+    {
+        if (_editorTextBox == null || string.IsNullOrEmpty(_editorTextBox.SelectedText))
+        {
+            return;
+        }
+
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard != null)
+        {
+            await clipboard.SetTextAsync(_editorTextBox.SelectedText);
+        }
     }
 
     private Task ShowInfoDialogAsync(string message)
     {
         return ShowDialogAsync("Tascade", message, null, "OK", null);
-    }
-
-    private async Task<UnsavedChangesDecision> ShowUnsavedChangesDialogAsync(string title)
-    {
-        var result = await ShowDialogAsync("Unsaved Changes", $"Save changes to '{title}' before closing?", null, "Save", "Discard", "Cancel");
-        return result switch
-        {
-            DialogResult.Primary => UnsavedChangesDecision.Save,
-            DialogResult.Secondary => UnsavedChangesDecision.Discard,
-            _ => UnsavedChangesDecision.Cancel
-        };
     }
 
     private async Task<DialogResult> ShowDialogAsync(string title, string message, Control? content, string primaryText, string? secondaryText, string? cancelText = null)
@@ -542,12 +584,5 @@ public partial class MainWindow : Window
         Cancel,
         Primary,
         Secondary
-    }
-
-    private enum UnsavedChangesDecision
-    {
-        Cancel,
-        Save,
-        Discard
     }
 }
