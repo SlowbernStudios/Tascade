@@ -52,25 +52,6 @@ RIDs packaged by default:
 - `linux-x64`, `linux-arm64`
 - `osx-x64`, `osx-arm64`
 
-## Signed Windows Releases
-
-The project supports optional Authenticode signing for Windows publish output.
-
-Local signed packaging:
-
-```powershell
-.\release.ps1 `
-  -Version v1.0.0 `
-  -EnableSigning `
-  -CodeSignPfxPath "C:\path\codesign.pfx" `
-  -CodeSignPfxPassword "your-password"
-```
-
-GitHub Actions release signing is supported via secrets:
-
-- `CODESIGN_PFX_BASE64`
-- `CODESIGN_PFX_PASSWORD`
-
 ## Automated GitHub Releases
 
 Workflow: `.github/workflows/release.yml`
